@@ -76,6 +76,8 @@ jobs:
     name: Build macOS Companion (MacBook Air)
     runs-on: macos-14
     needs: protocol-and-security-tests
+    permissions:
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -97,12 +99,15 @@ jobs:
           set -o pipefail
           swift build -c release --verbose 2>&1 | tee ../dist/macos-build.log
 
-      - name: Upload Build Log on Failure
+      - name: Push Log on Failure
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-build-log
-          path: dist/macos-build.log
+        run: |
+          git config user.name "CI"
+          git config user.email "ci@trilink.local"
+          git checkout -B ci-error-log
+          git add -f dist/macos-build.log
+          git commit -m "ci: macos build failure log" || true
+          git push -f origin ci-error-log || true
 
       - name: Package TriLink.app
         run: |
