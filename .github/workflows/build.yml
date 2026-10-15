@@ -92,7 +92,17 @@ jobs:
 
       - name: Build macOS Release Binary
         working-directory: ./macos
-        run: swift build -c release
+        run: |
+          mkdir -p ../dist
+          set -o pipefail
+          swift build -c release --verbose 2>&1 | tee ../dist/macos-build.log
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-log
+          path: dist/macos-build.log
 
       - name: Package TriLink.app
         run: |
