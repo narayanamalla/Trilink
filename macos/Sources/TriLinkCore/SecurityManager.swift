@@ -21,7 +21,7 @@ public enum SecurityError: Error, CustomStringConvertible {
     }
 }
 
-public final class SecurityManager: Sendable {
+public final class SecurityManager: @unchecked Sendable {
     public let signingPrivateKey: Curve25519.Signing.PrivateKey
     public let agreementPrivateKey: Curve25519.KeyAgreement.PrivateKey
 

@@ -1,6 +1,6 @@
 import Foundation
 
-public final class LocalTransferClient: Sendable {
+public final class LocalTransferClient: @unchecked Sendable {
     public let securityManager: SecurityManager
     public let localDeviceId: String
 

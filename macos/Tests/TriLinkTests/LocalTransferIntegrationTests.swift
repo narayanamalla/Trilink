@@ -1,7 +1,7 @@
 import XCTest
 @testable import TriLinkCore
 
-final class LocalTransferIntegrationTests: XCTestCase, @unchecked Sendable {
+final class LocalTransferIntegrationTests: XCTestCase {
 
     func testEndToEndLocalFileAndTextTransfer() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("TriLinkServer_\(UUID().uuidString)")

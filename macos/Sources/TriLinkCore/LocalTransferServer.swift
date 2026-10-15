@@ -233,7 +233,7 @@ public final class LocalTransferServer: @unchecked Sendable {
                 self.lock.unlock()
 
                 // Append initial body chunk
-                active.handle.write(initialBody)
+                try? active.handle.write(contentsOf: initialBody)
                 var currentBytes = active.receivedBytes + Int64(initialBody.count)
                 self.lock.lock()
                 self.activeTransfers[transferId] = (active.request, active.tempFile, active.handle, currentBytes)
@@ -269,7 +269,7 @@ public final class LocalTransferServer: @unchecked Sendable {
             self.lock.unlock()
 
             if let chunk = content {
-                active.handle.write(chunk)
+                try? active.handle.write(contentsOf: chunk)
                 let newTotal = active.receivedBytes + Int64(chunk.count)
                 self.lock.lock()
                 self.activeTransfers[transferId] = (active.request, active.tempFile, active.handle, newTotal)

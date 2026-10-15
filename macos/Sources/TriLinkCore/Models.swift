@@ -32,7 +32,7 @@ public struct Device: Identifiable, Codable, Sendable {
     public var publicKey: String // Base64 Ed25519 pubkey
     public var exchangeKey: String // Base64 X25519 pubkey
     public var localEndpoint: String?
-    public var isOnlineLocally: BooleanLiteralType = false
+    public var isOnlineLocally: Bool = false
     public var lastSeenAt: Int64
     public var isRevoked: Bool
 
