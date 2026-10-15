@@ -96,15 +96,7 @@ jobs:
       - name: Package TriLink.app
         run: |
           mkdir -p dist
-          BIN_DIR=$(cd ./macos && swift build -c release --show-bin-path)
-          echo "Bin directory: $BIN_DIR"
-          ls -la "$BIN_DIR"
-          BIN_PATH=$(find "$BIN_DIR" -type f \( -name "trilink-mac" -o -name "TriLinkApp" -o -name "TriLink" \) 2>/dev/null | head -n 1)
-          if [ -z "$BIN_PATH" ]; then
-            BIN_PATH=$(find ./macos/.build -type f \( -name "trilink-mac" -o -name "TriLinkApp" \) 2>/dev/null | head -n 1)
-          fi
-          echo "Using binary: $BIN_PATH"
-          ./scripts/package_macos_app.sh ./dist "$BIN_PATH"
+          ./scripts/package_macos_app.sh ./dist ./macos/.build/release/trilink-mac
 
       - name: Upload macOS App Artifact
         uses: actions/upload-artifact@v4
