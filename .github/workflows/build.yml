@@ -96,3 +96,45 @@ jobs:
           name: trilink-macos-app
           path: dist/TriLink-macOS.zip
           if-no-files-found: error
+
+  # 4. Publish GitHub Release
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-android, build-macos]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: trilink-android-apk
+          path: ./release-assets
+
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: trilink-macos-app
+          path: ./release-assets
+
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.1
+          name: "TriLink v1.0.1: Pinterest UI & Live Camera QR Scanner"
+          body: |
+            ### TriLink v1.0.1 Release Notes
+
+            - 📸 **Live Camera QR Scanning on Phone:** Point phone camera at Mac screen to pair in under 1 second.
+            - 🎨 **Pinterest-Style Aesthetic:** Clean organic palette, curved card surfaces, pill navigation chips, and refined micro-typography.
+            - ⏱️ **Timestamp Skew Bug Resolved:** Resolved unit mismatch (seconds vs milliseconds) that triggered premature "code expired" rejection.
+            - 🖥️ **Live Mac UI Sync:** Desktop dashboard now immediately updates on the main thread upon device pairing.
+          files: |
+            ./release-assets/app-debug.apk
+            ./release-assets/TriLink-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
