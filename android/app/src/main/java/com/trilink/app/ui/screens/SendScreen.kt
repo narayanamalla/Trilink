@@ -213,7 +213,7 @@ fun SendScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Outlined.CloudUpload,
+                                Icons.Default.CloudUpload,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(28.dp)

@@ -119,7 +119,7 @@ fun HomeScreen(
                                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Outlined.UploadFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.UploadFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Send File", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
@@ -143,7 +143,7 @@ fun HomeScreen(
                                     .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Scan Mac", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
@@ -195,7 +195,7 @@ fun HomeScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    Icons.Outlined.Devices,
+                                    Icons.Default.Devices,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(28.dp)

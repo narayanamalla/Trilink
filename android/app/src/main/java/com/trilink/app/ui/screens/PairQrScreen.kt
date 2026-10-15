@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -484,7 +483,7 @@ fun PairQrScreen(
                                         .background(MaterialTheme.colorScheme.surface)
                                 ) {
                                     Icon(
-                                        Icons.Outlined.ContentCopy,
+                                        Icons.Default.ContentCopy,
                                         contentDescription = "Copy Code",
                                         modifier = Modifier.size(18.dp)
                                     )

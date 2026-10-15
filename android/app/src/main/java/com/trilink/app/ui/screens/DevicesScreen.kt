@@ -82,7 +82,7 @@ fun DevicesScreen(
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Outlined.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                            Icon(Icons.Default.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                         }
                         Spacer(modifier = Modifier.height(14.dp))
                         Text("No Trusted Devices", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
