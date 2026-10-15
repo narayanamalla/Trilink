@@ -47,4 +47,5 @@ scratch/
 tmp/
 temp_downloads/
 bin/
+dist/
 *.zip

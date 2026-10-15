@@ -85,9 +85,14 @@ jobs:
         working-directory: ./macos
         run: swift build -c release -Xswiftc -suppress-warnings
 
-      - name: Upload macOS Companion Artifact
+      - name: Package TriLink.app
+        run: |
+          mkdir -p dist
+          ./scripts/package_macos_app.sh ./dist ./macos/.build/release/trilink-mac
+
+      - name: Upload macOS App Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trilink-macos-companion
-          path: macos/.build/release/trilink-mac
+          name: trilink-macos-app
+          path: dist/TriLink-macOS.zip
           if-no-files-found: error
