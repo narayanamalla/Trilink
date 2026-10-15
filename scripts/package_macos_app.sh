@@ -7,8 +7,11 @@ BINARY_PATH="${2:-./bin/trilink-mac}"
 APP_BUNDLE="${OUTPUT_DIR}/${APP_NAME}.app"
 
 if [ ! -f "${BINARY_PATH}" ]; then
-    echo "Searching for binary in .build..."
-    FOUND=$(find ./macos/.build ./.build -type f \( -name "trilink-mac" -o -name "TriLinkApp" -o -name "TriLink" \) 2>/dev/null | head -n 1)
+    echo "Searching for binary in ./macos/.build..."
+    FOUND=""
+    if [ -d "./macos/.build" ]; then
+        FOUND=$(find ./macos/.build -type f \( -name "trilink-mac" -o -name "TriLinkApp" -o -name "TriLink" \) 2>/dev/null | head -n 1 || true)
+    fi
     if [ -n "$FOUND" ] && [ -f "$FOUND" ]; then
         echo "Resolved binary at ${FOUND}"
         BINARY_PATH="$FOUND"
