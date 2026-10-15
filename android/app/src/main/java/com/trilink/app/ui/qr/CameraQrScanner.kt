@@ -1,8 +1,13 @@
 package com.trilink.app.ui.qr
 
+import android.content.ContextWrapper
 import android.view.ViewGroup
 import androidx.annotation.OptIn
-import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.*
@@ -19,28 +24,60 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
+
+private class QrCodeFrameAnalyzer(
+    private val onBarcodeDetected: (String) -> Unit
+) : ImageAnalysis.Analyzer {
+    private val scanner = BarcodeScanning.getClient()
+    @Volatile
+    private var detected = false
+
+    @OptIn(ExperimentalGetImage::class)
+    override fun analyze(imageProxy: ImageProxy) {
+        val mediaImage = imageProxy.image
+        if (mediaImage != null && !detected) {
+            val inputImage = InputImage.fromMediaImage(
+                mediaImage,
+                imageProxy.imageInfo.rotationDegrees
+            )
+            scanner.process(inputImage)
+                .addOnSuccessListener { barcodes ->
+                    for (barcode in barcodes) {
+                        if (barcode.format == Barcode.FORMAT_QR_CODE) {
+                            barcode.rawValue?.let { value ->
+                                if (!detected) {
+                                    detected = true
+                                    onBarcodeDetected(value)
+                                }
+                            }
+                        }
+                    }
+                }
+                .addOnCompleteListener {
+                    imageProxy.close()
+                }
+        } else {
+            imageProxy.close()
+        }
+    }
+}
 
 @Composable
 fun CameraQrScanner(
     modifier: Modifier = Modifier,
     onBarcodeDetected: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var hasDetected by remember { mutableStateOf(false) }
-
     val infiniteTransition = rememberInfiniteTransition(label = "scanLine")
     val scanLineOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -81,49 +118,26 @@ fun CameraQrScanner(
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
 
-                    val scanner = BarcodeScanning.getClient()
                     val executor = Executors.newSingleThreadExecutor()
-
-                    @OptIn(ExperimentalGetImage::class)
-                    imageAnalysis.setAnalyzer(executor) { imageProxy ->
-                        val mediaImage = imageProxy.image
-                        if (mediaImage != null && !hasDetected) {
-                            val inputImage = InputImage.fromMediaImage(
-                                mediaImage,
-                                imageProxy.imageInfo.rotationDegrees
-                            )
-                            scanner.process(inputImage)
-                                .addOnSuccessListener { barcodes ->
-                                    for (barcode in barcodes) {
-                                        if (barcode.format == Barcode.FORMAT_QR_CODE) {
-                                            barcode.rawValue?.let { value ->
-                                                if (!hasDetected) {
-                                                    hasDetected = true
-                                                    onBarcodeDetected(value)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                .addOnCompleteListener {
-                                    imageProxy.close()
-                                }
-                        } else {
-                            imageProxy.close()
-                        }
-                    }
+                    imageAnalysis.setAnalyzer(executor, QrCodeFrameAnalyzer(onBarcodeDetected))
 
                     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                    try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview,
-                            imageAnalysis
-                        )
-                    } catch (_: Exception) {}
+                    val lifecycleOwner: LifecycleOwner? = previewView.findViewTreeLifecycleOwner()
+                        ?: (ctx as? LifecycleOwner)
+                        ?: ((ctx as? ContextWrapper)?.baseContext as? LifecycleOwner)
+
+                    lifecycleOwner?.let { owner ->
+                        try {
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                owner,
+                                cameraSelector,
+                                preview,
+                                imageAnalysis
+                            )
+                        } catch (_: Exception) {}
+                    }
                 }, ContextCompat.getMainExecutor(ctx))
 
                 previewView

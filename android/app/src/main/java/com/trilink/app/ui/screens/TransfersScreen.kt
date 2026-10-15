@@ -176,7 +176,7 @@ fun TransfersScreen(
                                         (transfer.bytesTransferred.toFloat() / transfer.sizeBytes.toFloat()).coerceIn(0f, 1f)
                                     } else 0f
                                     LinearProgressIndicator(
-                                        progress = progress,
+                                        progress = { progress },
                                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                                         color = MaterialTheme.colorScheme.primary,
                                         trackColor = MaterialTheme.colorScheme.surfaceVariant
