@@ -5,8 +5,9 @@ import CoreImage
 import TriLinkCore
 
 public enum NavigationTab: String, CaseIterable, Identifiable {
+    case chat = "Chat"
+    case transfers = "Files & Media"
     case send = "Send"
-    case transfers = "Transfers"
     case devices = "Devices & Pairing"
     case settings = "Settings"
 
@@ -14,8 +15,9 @@ public enum NavigationTab: String, CaseIterable, Identifiable {
 
     public var iconName: String {
         switch self {
+        case .chat: return "bubble.left.and.bubble.right.fill"
+        case .transfers: return "folder.fill"
         case .send: return "arrow.up.circle.fill"
-        case .transfers: return "arrow.down.circle.fill"
         case .devices: return "laptopcomputer.and.iphone"
         case .settings: return "gearshape.fill"
         }
@@ -47,7 +49,7 @@ final class ThreadSafeDeviceBox: @unchecked Sendable {
 
 @MainActor
 public final class AppStateManager: ObservableObject, LocalTransferServerDelegate, @unchecked Sendable {
-    @Published public var selectedTab: NavigationTab = .send
+    @Published public var selectedTab: NavigationTab = .chat
     @Published public var isServerRunning: Bool = false
     @Published public var localIP: String = "127.0.0.1"
     @Published public var port: UInt16 = 42425
@@ -57,6 +59,16 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
     @Published public var transfers: [Transfer] = []
     @Published public var selectedPeerId: String? = nil
     @Published public var statusBanner: String? = nil
+
+    public var chatMessages: [Transfer] {
+        transfers
+            .filter { ($0.itemType == .text || $0.itemType == .url) && ($0.textContent != nil && !$0.textContent!.isEmpty) }
+            .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    public var fileTransfers: [Transfer] {
+        transfers.filter { $0.itemType == .file || $0.itemType == .image }
+    }
 
     private var server: LocalTransferServer?
     private let security = SecurityManager()
@@ -435,14 +447,40 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
         DispatchQueue.main.async {
             if let idx = self.transfers.firstIndex(where: { $0.id == transferId }) {
                 self.transfers[idx].status = .delivered
-                self.transfers[idx].localPath = fileURL.path
+                if itemType != .text && itemType != .url {
+                    self.transfers[idx].localPath = fileURL.path
+                }
+                self.transfers[idx].displayName = displayName
                 self.transfers[idx].bytesTransferred = self.transfers[idx].sizeBytes
+                if let t = textContent {
+                    self.transfers[idx].textContent = t
+                }
+            } else {
+                let transfer = Transfer(
+                    id: transferId,
+                    senderDeviceId: "remote",
+                    recipientDeviceId: self.localDevice.id,
+                    itemType: itemType,
+                    displayName: displayName,
+                    sizeBytes: Int64(textContent?.utf8.count ?? 0),
+                    sha256: "",
+                    deliveryMode: .local,
+                    status: .delivered,
+                    localPath: (itemType == .text || itemType == .url) ? nil : fileURL.path,
+                    textContent: textContent
+                )
+                self.transfers.insert(transfer, at: 0)
             }
             self.statusBanner = "✓ Received \(displayName)"
 
             let n = NSUserNotification()
-            n.title = "TriLink Received File"
-            n.informativeText = "Saved \(displayName) to Downloads/TriLink"
+            if itemType == .text || itemType == .url {
+                n.title = "TriLink Message"
+                n.informativeText = textContent ?? displayName
+            } else {
+                n.title = "TriLink Received File"
+                n.informativeText = "Saved \(displayName) to Downloads/TriLink"
+            }
             NSUserNotificationCenter.default.deliver(n)
         }
     }

@@ -95,12 +95,14 @@ class ShareActivity : ComponentActivity() {
                                                     ) { _ -> }
                                                 }
                                             } else if (sharedUri != null) {
+                                                val details = com.trilink.app.domain.FileUtils.resolveUriDetails(this@ShareActivity, sharedUri)
+                                                val isImg = com.trilink.app.domain.FileUtils.isImage(details.name, details.mimeType)
                                                 val t = Transfer(
                                                     senderDeviceId = "android-local",
                                                     recipientDeviceId = device.id,
-                                                    itemType = ItemType.FILE,
-                                                    displayName = sharedUri.lastPathSegment ?: "shared_file",
-                                                    sizeBytes = 1024,
+                                                    itemType = if (isImg) ItemType.IMAGE else ItemType.FILE,
+                                                    displayName = details.name,
+                                                    sizeBytes = details.size,
                                                     sha256 = "pending",
                                                     deliveryMode = if (device.isOnlineLocally) DeliveryMode.LOCAL else DeliveryMode.REMOTE,
                                                     status = TransferStatus.UPLOADING,
@@ -112,7 +114,8 @@ class ShareActivity : ComponentActivity() {
                                                         context = this@ShareActivity,
                                                         transfer = t,
                                                         targetEndpoint = targetEp,
-                                                        transferRepo = transferRepo
+                                                        transferRepo = transferRepo,
+                                                        mimeType = details.mimeType
                                                     ) { _ -> }
                                                 }
                                             }

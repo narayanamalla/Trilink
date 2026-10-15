@@ -74,15 +74,14 @@ class MainActivity : ComponentActivity() {
                     },
                     onSendFile = { target, uri ->
                         lifecycleScope.launch {
-                            val fileSize = try {
-                                contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
-                            } catch (_: Exception) { 0L }
+                            val details = com.trilink.app.domain.FileUtils.resolveUriDetails(this@MainActivity, uri)
+                            val isImg = com.trilink.app.domain.FileUtils.isImage(details.name, details.mimeType)
                             val transfer = Transfer(
                                 senderDeviceId = currentDevicePayload.deviceId,
                                 recipientDeviceId = target.id,
-                                itemType = ItemType.FILE,
-                                displayName = uri.lastPathSegment ?: "file",
-                                sizeBytes = fileSize,
+                                itemType = if (isImg) ItemType.IMAGE else ItemType.FILE,
+                                displayName = details.name,
+                                sizeBytes = details.size,
                                 sha256 = "pending",
                                 deliveryMode = if (target.isOnlineLocally) DeliveryMode.LOCAL else DeliveryMode.REMOTE,
                                 status = TransferStatus.UPLOADING,
@@ -95,7 +94,8 @@ class MainActivity : ComponentActivity() {
                                     context = this@MainActivity,
                                     transfer = transfer,
                                     targetEndpoint = ep,
-                                    transferRepo = transferRepo
+                                    transferRepo = transferRepo,
+                                    mimeType = details.mimeType
                                 ) { _ -> }
                                 if (res.isSuccess) {
                                     Toast.makeText(this@MainActivity, "✓ Delivered to ${target.deviceName}", Toast.LENGTH_SHORT).show()

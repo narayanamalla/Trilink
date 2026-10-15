@@ -19,8 +19,9 @@ import com.trilink.app.ui.screens.*
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "Home", Icons.Default.Home)
-    object Inbox : Screen("inbox", "Inbox", Icons.Default.Inbox)
-    object Transfers : Screen("transfers", "Transfers", Icons.Default.SwapHoriz)
+    object Chat : Screen("chat", "Chat", Icons.Default.Chat)
+    object Inbox : Screen("files", "Files", Icons.Default.Folder)
+    object Transfers : Screen("transfers", "Activity", Icons.Default.SwapHoriz)
     object Devices : Screen("devices", "Devices", Icons.Default.Devices)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     object Send : Screen("send", "Send", Icons.Default.Send)
@@ -50,8 +51,8 @@ fun MainAppNavigation(
 
     val bottomNavItems = listOf(
         Screen.Home,
+        Screen.Chat,
         Screen.Inbox,
-        Screen.Transfers,
         Screen.Devices,
         Screen.Settings
     )
@@ -105,6 +106,14 @@ fun MainAppNavigation(
                     onSendClick = { navController.navigate(Screen.Send.route) },
                     onPairClick = { navController.navigate(Screen.PairQr.route) },
                     onDeviceClick = { navController.navigate(Screen.Send.route) }
+                )
+            }
+            composable(Screen.Chat.route) {
+                ChatScreen(
+                    devices = devices,
+                    transfers = transfers,
+                    currentDeviceId = currentDevicePayload.deviceId,
+                    onSendText = onSendText
                 )
             }
             composable(Screen.Inbox.route) {

@@ -36,13 +36,17 @@ fun InboxScreen(
     val context = LocalContext.current
     val dateFormatter = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
 
+    val fileItems = remember(inboxItems) {
+        inboxItems.filter { it.itemType == ItemType.FILE || it.itemType == ItemType.IMAGE }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "Inbox",
+                        "Files & Media",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge
                     )
@@ -51,7 +55,7 @@ fun InboxScreen(
             )
         }
     ) { padding ->
-        if (inboxItems.isEmpty()) {
+        if (fileItems.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -67,17 +71,17 @@ fun InboxScreen(
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Inbox, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(28.dp))
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
-                        "Your Inbox is Clear",
+                        "No Files Received",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Files and messages received from your paired devices will appear here.",
+                        "Photos and documents received from your paired devices will appear here.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -91,7 +95,7 @@ fun InboxScreen(
                     .padding(horizontal = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(inboxItems) { item ->
+                items(fileItems) { item ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(24.dp),

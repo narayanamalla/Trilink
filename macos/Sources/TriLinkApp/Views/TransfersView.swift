@@ -8,7 +8,7 @@ struct TransfersView: View {
         VStack(spacing: 0) {
             // Header bar
             HStack {
-                Text("Transfer Activity")
+                Text("Files & Media")
                     .font(.title2)
                     .fontWeight(.bold)
 
@@ -23,16 +23,16 @@ struct TransfersView: View {
 
             Divider()
 
-            if state.transfers.isEmpty {
+            if state.fileTransfers.isEmpty {
                 VStack(spacing: 16) {
                     Spacer()
-                    Image(systemName: "tray")
+                    Image(systemName: "folder.badge.gearshape")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
-                    Text("No transfers yet")
+                    Text("No files or photos yet")
                         .font(.headline)
                         .foregroundColor(.secondary)
-                    Text("Files received from your Realme phone or Xiaomi Pad will appear here.")
+                    Text("Photos, videos, and documents transferred between your Mac and devices will appear here.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
@@ -40,7 +40,7 @@ struct TransfersView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    ForEach(state.transfers) { transfer in
+                    ForEach(state.fileTransfers) { transfer in
                         TransferRow(transfer: transfer) {
                             if let path = transfer.localPath {
                                 state.openFileInFinder(path: path)

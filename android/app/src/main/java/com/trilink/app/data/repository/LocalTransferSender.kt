@@ -22,6 +22,7 @@ object LocalTransferSender {
         transfer: Transfer,
         targetEndpoint: String,
         transferRepo: TransferRepository,
+        mimeType: String? = null,
         onProgress: suspend (Long) -> Unit
     ): Result<Unit> = withContext(Dispatchers.IO) {
         var normalized = targetEndpoint.trim().removeSuffix("/")
@@ -30,6 +31,13 @@ object LocalTransferSender {
         }
 
         try {
+            // Resolve MIME type if not provided
+            val resolvedMimeType = mimeType ?: if (transfer.localPath != null) {
+                try {
+                    com.trilink.app.domain.FileUtils.resolveUriDetails(context, Uri.parse(transfer.localPath)).mimeType
+                } catch (_: Exception) { null }
+            } else null
+
             // 1. Resolve payload bytes
             val dataBytes: ByteArray = when (transfer.itemType) {
                 ItemType.TEXT, ItemType.URL -> {
@@ -92,6 +100,10 @@ object LocalTransferSender {
                 put("sha256", sha256Hex)
                 put("delivery_mode", "local")
                 put("deliveryMode", "local")
+                if (resolvedMimeType != null) {
+                    put("mime_type", resolvedMimeType)
+                    put("mimeType", resolvedMimeType)
+                }
                 if (transfer.textContent != null) {
                     put("text_content", transfer.textContent)
                     put("textContent", transfer.textContent)
@@ -109,10 +121,10 @@ object LocalTransferSender {
                 return@withContext Result.failure(Exception("Peer rejected initiate: $err"))
             }
 
-            // If text transfer was already completed by text_content in initiate
-            if (dataBytes.isEmpty()) {
-                transferRepo.updateTransferProgress(transfer.id, TransferStatus.DELIVERED, 0)
-                onProgress(0)
+            // Text and URL notes are delivered directly in initiate request
+            if (transfer.itemType == ItemType.TEXT || transfer.itemType == ItemType.URL || dataBytes.isEmpty()) {
+                transferRepo.updateTransferProgress(transfer.id, TransferStatus.DELIVERED, dataBytes.size.toLong())
+                onProgress(dataBytes.size.toLong())
                 return@withContext Result.success(Unit)
             }
 

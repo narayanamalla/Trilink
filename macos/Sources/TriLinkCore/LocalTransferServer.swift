@@ -305,7 +305,7 @@ public final class LocalTransferServer: @unchecked Sendable {
             Task {
                 let accepted = await self.delegate?.serverDidReceiveTransferInitiate(req) ?? true
                 if accepted {
-                    if req.sizeBytes == 0, let text = req.textContent, !text.isEmpty {
+                    if (req.itemType == .text || req.itemType == .url), let text = req.textContent, !text.isEmpty {
                         await self.delegate?.serverDidCompleteTransfer(
                             transferId: req.transferId,
                             fileURL: self.downloadsDirectory,
@@ -313,7 +313,7 @@ public final class LocalTransferServer: @unchecked Sendable {
                             displayName: req.displayName,
                             textContent: text
                         )
-                        let resp = "{\"status\":\"accepted\",\"upload_token\":\"\(req.transferId)\"}"
+                        let resp = "{\"status\":\"delivered\",\"transfer_id\":\"\(req.transferId)\"}"
                         self.sendResponse(connection: connection, statusCode: 200, contentType: "application/json", body: resp)
                         return
                     }
@@ -420,9 +420,43 @@ public final class LocalTransferServer: @unchecked Sendable {
         if let fileData = try? Data(contentsOf: active.tempFile) {
             let computedSha = SecurityManager.sha256Hex(data: fileData)
             if computedSha.lowercased() == active.request.sha256.lowercased() {
+                // If this is a text note or URL, DO NOT save as a raw disk file in Downloads!
+                if active.request.itemType == .text || active.request.itemType == .url {
+                    let text = active.request.textContent ?? String(data: fileData, encoding: .utf8) ?? ""
+                    try? FileManager.default.removeItem(at: active.tempFile)
+
+                    self.lock.lock()
+                    self.activeTransfers.removeValue(forKey: transferId)
+                    self.lock.unlock()
+
+                    Task {
+                        await self.delegate?.serverDidCompleteTransfer(
+                            transferId: transferId,
+                            fileURL: self.downloadsDirectory,
+                            itemType: active.request.itemType,
+                            displayName: active.request.displayName,
+                            textContent: text
+                        )
+                    }
+
+                    let resp = "{\"status\":\"delivered\",\"transfer_id\":\"\(transferId)\",\"verified_sha256\":\"\(computedSha)\"}"
+                    self.sendResponse(connection: connection, statusCode: 200, contentType: "application/json", body: resp)
+                    return
+                }
+
+                // For Files & Photos: Detect extension if missing from magic bytes or mimeType!
+                var finalFilename = active.request.displayName
+                let ext = (finalFilename as NSString).pathExtension
+                if ext.isEmpty {
+                    let detectedExt = Self.detectExtension(data: fileData, mimeType: active.request.mimeType)
+                    if !detectedExt.isEmpty {
+                        finalFilename = "\(finalFilename).\(detectedExt)"
+                    }
+                }
+
                 let finalDestination = PathSanitizer.resolveDestinationFile(
                     parentDir: self.downloadsDirectory,
-                    filename: active.request.displayName
+                    filename: finalFilename
                 )
                 try? FileManager.default.moveItem(at: active.tempFile, to: finalDestination)
 
@@ -435,7 +469,7 @@ public final class LocalTransferServer: @unchecked Sendable {
                         transferId: transferId,
                         fileURL: finalDestination,
                         itemType: active.request.itemType,
-                        displayName: active.request.displayName,
+                        displayName: finalFilename,
                         textContent: active.request.textContent
                     )
                 }
@@ -449,6 +483,47 @@ public final class LocalTransferServer: @unchecked Sendable {
         } else {
             self.sendResponse(connection: connection, statusCode: 500, body: "Failed to read transferred file")
         }
+    }
+
+    public static func detectExtension(data: Data, mimeType: String?) -> String {
+        if let mime = mimeType?.lowercased() {
+            if mime.contains("jpeg") || mime.contains("jpg") { return "jpg" }
+            if mime.contains("png") { return "png" }
+            if mime.contains("webp") { return "webp" }
+            if mime.contains("heic") { return "heic" }
+            if mime.contains("gif") { return "gif" }
+            if mime.contains("pdf") { return "pdf" }
+            if mime.contains("mp4") { return "mp4" }
+            if mime.contains("quicktime") || mime.contains("mov") { return "mov" }
+            if mime.contains("zip") { return "zip" }
+            if mime.contains("json") { return "json" }
+            if mime.contains("text") { return "txt" }
+        }
+
+        // Magic bytes detection
+        if data.count >= 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF {
+            return "jpg"
+        }
+        if data.count >= 4 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
+            return "png"
+        }
+        if data.count >= 3 && data[0] == 0x47 && data[1] == 0x49 && data[2] == 0x46 {
+            return "gif"
+        }
+        if data.count >= 12, let riff = String(data: data[0..<4], encoding: .ascii), riff == "RIFF",
+           let webp = String(data: data[8..<12], encoding: .ascii), webp == "WEBP" {
+            return "webp"
+        }
+        if data.count >= 4 && data[0] == 0x25 && data[1] == 0x50 && data[2] == 0x44 && data[3] == 0x46 {
+            return "pdf"
+        }
+        if data.count >= 4 && data[0] == 0x50 && data[1] == 0x4B && data[2] == 0x03 && data[3] == 0x04 {
+            return "zip"
+        }
+        if data.count >= 8, let ftyp = String(data: data[4..<8], encoding: .ascii), ftyp == "ftyp" {
+            return "mp4"
+        }
+        return ""
     }
 
     private func sendResponse(

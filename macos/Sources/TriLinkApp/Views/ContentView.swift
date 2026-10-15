@@ -57,10 +57,12 @@ struct ContentView: View {
 
                 // Main Tab Content
                 switch state.selectedTab {
-                case .send:
-                    SendView()
+                case .chat:
+                    ChatView()
                 case .transfers:
                     TransfersView()
+                case .send:
+                    SendView()
                 case .devices:
                     DevicesView()
                 case .settings:
