@@ -90,9 +90,10 @@ class RealDeviceRepository(
                     put("public_key", myPayload.publicKey)
                     put("publicKey", myPayload.publicKey)
                     put("exchange_key", myPayload.exchangeKey)
-                    put("exchangeKey", myPayload.exchangeKey)
-                    put("local_endpoint", myPayload.localEndpoint ?: "")
-                    put("localEndpoint", myPayload.localEndpoint ?: "")
+                    val ip = com.trilink.app.domain.NetworkUtils.getLocalIpAddress()
+                    val myEp = if (!myPayload.localEndpoint.isNullOrBlank()) myPayload.localEndpoint else if (!ip.isNullOrBlank()) "http://$ip:42426" else ""
+                    put("local_endpoint", myEp)
+                    put("localEndpoint", myEp)
                     put("expires_at", now + 600_000)
                     put("expiresAt", now + 600_000)
                 }

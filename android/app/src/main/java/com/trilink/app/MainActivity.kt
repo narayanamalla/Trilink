@@ -24,7 +24,12 @@ class MainActivity : ComponentActivity() {
         val deviceRepo = app.deviceRepository
         val transferRepo = app.transferRepository
 
-        val currentDevicePayload = app.currentDevicePayload
+        val ip = com.trilink.app.domain.NetworkUtils.getLocalIpAddress()
+        val currentDevicePayload = if (!ip.isNullOrBlank()) {
+            app.currentDevicePayload.copy(localEndpoint = "http://$ip:42426")
+        } else {
+            app.currentDevicePayload
+        }
 
         setContent {
             TriLinkTheme {

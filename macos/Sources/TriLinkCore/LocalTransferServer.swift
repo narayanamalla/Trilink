@@ -6,6 +6,11 @@ public protocol LocalTransferServerDelegate: AnyObject, Sendable {
     func serverDidReceiveTransferInitiate(_ request: TransferInitiateRequest) async -> Bool
     func serverDidCompleteTransfer(transferId: String, fileURL: URL, itemType: ItemType, displayName: String, textContent: String?) async
     func serverDidReceiveCancellation(transferId: String) async
+    func serverDidObservePeerEndpoint(deviceId: String, endpoint: String) async
+}
+
+extension LocalTransferServerDelegate {
+    public func serverDidObservePeerEndpoint(deviceId: String, endpoint: String) async {}
 }
 
 public final class LocalTransferServer: @unchecked Sendable {
@@ -197,8 +202,28 @@ public final class LocalTransferServer: @unchecked Sendable {
                 return
             }
 
+            let remoteHost = self.extractRemoteHost(from: connection)
+            var effectiveEndpoint = payload.localEndpoint
+            if effectiveEndpoint == nil || effectiveEndpoint?.trimmingCharacters(in: .whitespaces).isEmpty == true {
+                if let host = remoteHost, !host.isEmpty {
+                    effectiveEndpoint = "http://\(host):42426"
+                }
+            }
+
+            let finalPayload = PairingPayload(
+                version: payload.version,
+                pairingId: payload.pairingId,
+                deviceId: payload.deviceId,
+                deviceName: payload.deviceName,
+                platform: payload.platform,
+                publicKey: payload.publicKey,
+                exchangeKey: payload.exchangeKey,
+                localEndpoint: effectiveEndpoint,
+                expiresAt: payload.expiresAt
+            )
+
             Task {
-                let approved = await self.delegate?.serverDidReceivePairingRequest(payload) ?? true
+                let approved = await self.delegate?.serverDidReceivePairingRequest(finalPayload) ?? true
                 if approved {
                     let resp = "{\"status\":\"approved\",\"confirmed_at\":\(Int64(Date().timeIntervalSince1970))}"
                     self.sendResponse(connection: connection, statusCode: 200, contentType: "application/json", body: resp)
@@ -223,6 +248,14 @@ public final class LocalTransferServer: @unchecked Sendable {
         guard let peerDevice = trustedDevices[senderId], !peerDevice.isRevoked else {
             sendResponse(connection: connection, statusCode: 403, body: "Untrusted or Revoked Peer")
             return
+        }
+
+        // Observe peer endpoint from incoming connection
+        if let remoteHost = self.extractRemoteHost(from: connection), !remoteHost.isEmpty {
+            let observedEndpoint = "http://\(remoteHost):42426"
+            Task {
+                await self.delegate?.serverDidObservePeerEndpoint(deviceId: senderId, endpoint: observedEndpoint)
+            }
         }
 
         // Verify signature
@@ -538,5 +571,21 @@ public final class LocalTransferServer: @unchecked Sendable {
         connection.send(content: Data(response.utf8), completion: .contentProcessed({ _ in
             connection.cancel()
         }))
+    }
+
+    private func extractRemoteHost(from connection: NWConnection) -> String? {
+        if case .hostPort(let host, _) = connection.endpoint {
+            switch host {
+            case .ipv4(let ip4):
+                return "\(ip4)"
+            case .ipv6(let ip6):
+                return "\(ip6)"
+            case .name(let name, _):
+                return name
+            @unknown default:
+                return nil
+            }
+        }
+        return nil
     }
 }

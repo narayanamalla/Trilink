@@ -493,6 +493,37 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
         }
     }
 
+    public func serverDidObservePeerEndpoint(deviceId: String, endpoint: String) async {
+        DispatchQueue.main.async {
+            if let idx = self.trustedDevices.firstIndex(where: { $0.id == deviceId }) {
+                if self.trustedDevices[idx].localEndpoint != endpoint || !self.trustedDevices[idx].isOnlineLocally {
+                    self.trustedDevices[idx].localEndpoint = endpoint
+                    self.trustedDevices[idx].isOnlineLocally = true
+                    self.saveTrustedDevices()
+                }
+            }
+        }
+    }
+
+    public func updateDeviceEndpoint(deviceId: String, newEndpoint: String) {
+        if let idx = trustedDevices.firstIndex(where: { $0.id == deviceId }) {
+            var ep = newEndpoint.trimmingCharacters(in: .whitespaces)
+            if !ep.isEmpty {
+                if !ep.hasPrefix("http://") && !ep.hasPrefix("https://") {
+                    ep = "http://\(ep)"
+                }
+                let hostPort = ep.replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "https://", with: "")
+                if !hostPort.contains(":") {
+                    ep = "\(ep):42426"
+                }
+            }
+            trustedDevices[idx].localEndpoint = ep.isEmpty ? nil : ep
+            trustedDevices[idx].isOnlineLocally = !ep.isEmpty
+            saveTrustedDevices()
+            statusBanner = "✓ Updated endpoint for \(trustedDevices[idx].deviceName) to \(ep)"
+        }
+    }
+
     private func getLocalIPAddress() -> String {
         var address: String = "127.0.0.1"
         var ifaddr: UnsafeMutablePointer<ifaddrs>?

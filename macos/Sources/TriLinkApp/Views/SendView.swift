@@ -184,7 +184,7 @@ struct SendView: View {
         let isUrl = text.starts(with: "http://") || text.starts(with: "https://")
         state.sendText(to: target, text: text, isUrl: isUrl)
         self.textInput = ""
-        state.selectedTab = .transfers
+        state.selectedTab = .chat
     }
 }
 

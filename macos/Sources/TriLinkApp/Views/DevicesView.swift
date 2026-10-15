@@ -6,6 +6,8 @@ struct DevicesView: View {
     @EnvironmentObject var state: AppStateManager
     @State private var manualPeerInput: String = ""
     @State private var copied: Bool = false
+    @State private var editingDeviceId: String? = nil
+    @State private var editingIpText: String = ""
 
     var body: some View {
         ScrollView {
@@ -123,15 +125,59 @@ struct DevicesView: View {
                                         .font(.title2)
                                         .frame(width: 36)
 
-                                    VStack(alignment: .leading, spacing: 2) {
+                                    VStack(alignment: .leading, spacing: 4) {
                                         Text(device.deviceName)
                                             .font(.headline)
-                                        Text("Platform: \(device.platform.capitalized) • Endpoint: \(device.localEndpoint ?? "Local")")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+
+                                        let hasEndpoint = !(device.localEndpoint?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
+                                        let epDisplay = hasEndpoint ? device.localEndpoint! : "No local endpoint"
+
+                                        HStack(spacing: 6) {
+                                            Circle()
+                                                .fill(hasEndpoint ? Color.green : Color.orange)
+                                                .frame(width: 8, height: 8)
+                                            Text("Platform: \(device.platform.capitalized) • Endpoint: \(epDisplay)")
+                                                .font(.caption)
+                                                .foregroundColor(hasEndpoint ? .secondary : .orange)
+                                        }
+
+                                        if editingDeviceId == device.id {
+                                            HStack(spacing: 8) {
+                                                TextField("e.g. 192.168.1.15:42426", text: $editingIpText)
+                                                    .textFieldStyle(.roundedBorder)
+                                                    .frame(maxWidth: 220)
+                                                Button("Save") {
+                                                    state.updateDeviceEndpoint(deviceId: device.id, newEndpoint: editingIpText)
+                                                    editingDeviceId = nil
+                                                }
+                                                .buttonStyle(.borderedProminent)
+                                                .controlSize(.small)
+                                                Button("Cancel") {
+                                                    editingDeviceId = nil
+                                                }
+                                                .buttonStyle(.bordered)
+                                                .controlSize(.small)
+                                            }
+                                            .padding(.top, 4)
+                                        }
                                     }
 
                                     Spacer()
+
+                                    if editingDeviceId != device.id {
+                                        Button(action: {
+                                            editingIpText = device.localEndpoint ?? "http://192.168.1.:42426"
+                                            editingDeviceId = device.id
+                                        }) {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "pencil")
+                                                Text(device.localEndpoint?.isEmpty == false ? "Edit IP" : "Set Phone IP")
+                                            }
+                                            .font(.caption)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                    }
 
                                     Button(role: .destructive) {
                                         state.revokeDevice(id: device.id)
