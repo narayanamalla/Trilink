@@ -49,15 +49,26 @@ class RealDeviceRepository(
     }
 
     override suspend fun pairDevice(payload: PairingPayload): Result<Device> = withContext(Dispatchers.IO) {
-        if (System.currentTimeMillis() > payload.expiresAt) {
+        val expiryMs = if (payload.expiresAt < 100_000_000_000L) payload.expiresAt * 1000L else payload.expiresAt
+        if (System.currentTimeMillis() > expiryMs) {
             return@withContext Result.failure(IllegalArgumentException("Pairing code has expired."))
         }
 
-        val endpoint = payload.localEndpoint
-        if (!endpoint.isNullOrBlank()) {
+        var normalizedEndpoint = payload.localEndpoint?.trim()?.removeSuffix("/")
+        if (!normalizedEndpoint.isNullOrBlank()) {
+            if (!normalizedEndpoint.startsWith("http://") && !normalizedEndpoint.startsWith("https://")) {
+                normalizedEndpoint = "http://$normalizedEndpoint"
+            }
+            val parsedUrl = try { URL(normalizedEndpoint) } catch (_: Exception) { null }
+            val baseUrl = if (parsedUrl != null) {
+                "${parsedUrl.protocol}://${parsedUrl.authority}"
+            } else {
+                normalizedEndpoint
+            }
+            normalizedEndpoint = baseUrl
+
             try {
-                val cleanEndpoint = endpoint.trim().removeSuffix("/")
-                val url = URL("$cleanEndpoint/api/v1/pair")
+                val url = URL("$baseUrl/api/v1/pair")
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.setRequestProperty("Content-Type", "application/json")
@@ -86,7 +97,7 @@ class RealDeviceRepository(
                     return@withContext Result.failure(Exception("Peer rejected pairing (HTTP $responseCode)"))
                 }
             } catch (e: Exception) {
-                return@withContext Result.failure(Exception("Could not connect to ${payload.deviceName} at $endpoint: ${e.message}"))
+                return@withContext Result.failure(Exception("Could not connect to ${payload.deviceName} at $normalizedEndpoint: ${e.message}"))
             }
         }
 
@@ -97,7 +108,7 @@ class RealDeviceRepository(
             platform = payload.platform,
             publicKey = payload.publicKey,
             exchangeKey = payload.exchangeKey,
-            localEndpoint = payload.localEndpoint,
+            localEndpoint = normalizedEndpoint,
             isOnlineLocally = true,
             lastSeenAt = System.currentTimeMillis(),
             isRevoked = false

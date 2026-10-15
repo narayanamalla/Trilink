@@ -3,13 +3,24 @@ package com.trilink.app.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.trilink.app.data.model.DeliveryMode
 import com.trilink.app.data.model.Device
@@ -24,7 +35,7 @@ fun SendScreen(
     onBack: () -> Unit
 ) {
     var selectedDevice by remember { mutableStateOf(devices.firstOrNull()) }
-    var contentType by remember { mutableStateOf("text") } // "text" or "file"
+    var contentType by remember { mutableStateOf("file") } // "file" or "text"
     var textInput by remember { mutableStateOf("") }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -37,14 +48,30 @@ fun SendScreen(
     val route = if (selectedDevice?.isOnlineLocally == true) DeliveryMode.LOCAL else DeliveryMode.REMOTE
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Send Content") },
+                title = {
+                    Text(
+                        "Send Item",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface)
+                    ) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { padding ->
@@ -52,138 +79,162 @@ fun SendScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(horizontal = 20.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Select Recipient Device", style = MaterialTheme.typography.titleSmall)
+            // Target Device Selector Card
+            Text(
+                "Recipient Device",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
 
             if (devices.isEmpty()) {
-                Text(
-                    "No paired devices. Please pair your tablet or Mac first.",
-                    color = MaterialTheme.colorScheme.error
-                )
-            } else {
-                var expanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    OutlinedTextField(
-                        value = selectedDevice?.let { "${it.deviceName} (${if (it.isOnlineLocally) "Local" else "Remote"})" } ?: "Select Device",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    Text(
+                        "No paired devices found. Pair a device first to send files.",
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
                     )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        devices.forEach { device ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text("${device.deviceName} (${device.platform}) - ${if (device.isOnlineLocally) "Local" else "Remote"}")
-                                },
-                                onClick = {
-                                    selectedDevice = device
-                                    expanded = false
-                                }
-                            )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    devices.forEach { device ->
+                        val isSelected = selectedDevice?.id == device.id
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                            border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0x12000000)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable { selectedDevice = device }
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Icon(
+                                    imageVector = if (device.platform == "macos") Icons.Default.Laptop else Icons.Default.PhoneAndroid,
+                                    contentDescription = null,
+                                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    device.deviceName,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    if (device.isOnlineLocally) "Local LAN" else "Remote",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Route Badge
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = if (route == DeliveryMode.LOCAL)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.tertiaryContainer
-                )
+            // Mode Toggle (Pills)
+            Surface(
+                shape = RoundedCornerShape(100.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
+                    modifier = Modifier.fillMaxSize().padding(3.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (route == DeliveryMode.LOCAL) Icons.Default.Wifi else Icons.Default.CloudQueue,
-                        contentDescription = null
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text("Delivery Route: ${route.name}", style = MaterialTheme.typography.labelLarge)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(100.dp))
+                            .background(if (contentType == "file") MaterialTheme.colorScheme.surface else Color.Transparent)
+                            .clickable { contentType = "file" },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            if (route == DeliveryMode.LOCAL)
-                                "Direct P2P via local network (fast & encrypted)"
-                            else
-                                "End-to-end encrypted relay via Supabase",
-                            style = MaterialTheme.typography.bodySmall
+                            "File & Photos",
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (contentType == "file") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(100.dp))
+                            .background(if (contentType == "text") MaterialTheme.colorScheme.surface else Color.Transparent)
+                            .clickable { contentType = "text" },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Text & Links",
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (contentType == "text") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
-            // Mode Selector
-            Row(modifier = Modifier.fillMaxWidth()) {
-                FilterChip(
-                    selected = contentType == "text",
-                    onClick = { contentType = "text" },
-                    label = { Text("Text / URL") },
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                FilterChip(
-                    selected = contentType == "file",
-                    onClick = { contentType = "file" },
-                    label = { Text("File / Image") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            if (contentType == "text") {
-                OutlinedTextField(
-                    value = textInput,
-                    onValueChange = { textInput = it },
-                    label = { Text("Type text or paste link...") },
+            // Content Area
+            if (contentType == "file") {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
-                )
-                Button(
-                    onClick = {
-                        val dev = selectedDevice ?: return@Button
-                        val itemType = if (textInput.startsWith("http://") || textInput.startsWith("https://")) ItemType.URL else ItemType.TEXT
-                        onSendText(dev, textInput, itemType)
-                        textInput = ""
-                        onBack()
-                    },
-                    enabled = selectedDevice != null && textInput.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable { filePicker.launch("*/*") }
                 ) {
-                    Icon(Icons.Default.Send, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Send Text")
-                }
-            } else {
-                OutlinedButton(
-                    onClick = { filePicker.launch("*/*") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.AttachFile, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (selectedFileUri != null) "File Selected" else "Choose File or Photo")
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Outlined.CloudUpload,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            if (selectedFileUri != null) "File Selected" else "Tap to Select File or Photo",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            selectedFileUri?.lastPathSegment ?: "Supports any file format with end-to-end encryption",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
 
-                if (selectedFileUri != null) {
-                    Text(
-                        "Selected: ${selectedFileUri?.path ?: ""}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     onClick = {
@@ -193,13 +244,61 @@ fun SendScreen(
                         onBack()
                     },
                     enabled = selectedDevice != null && selectedFileUri != null,
+                    shape = RoundedCornerShape(100.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Direct Send File", fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Upload, contentDescription = null)
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            "Message or Link",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = textInput,
+                            onValueChange = { textInput = it },
+                            placeholder = { Text("Paste URL, code snippet, or text notes...") },
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        val dev = selectedDevice ?: return@Button
+                        val itemType = if (textInput.startsWith("http://") || textInput.startsWith("https://")) ItemType.URL else ItemType.TEXT
+                        onSendText(dev, textInput, itemType)
+                        textInput = ""
+                        onBack()
+                    },
+                    enabled = selectedDevice != null && textInput.isNotBlank(),
+                    shape = RoundedCornerShape(100.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Transfer File")
+                    Text("Send Text", fontWeight = FontWeight.Bold)
                 }
             }
+
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }

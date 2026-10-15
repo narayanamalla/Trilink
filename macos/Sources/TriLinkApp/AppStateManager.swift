@@ -135,7 +135,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
             "public_key": localDevice.publicKey,
             "exchange_key": localDevice.exchangeKey,
             "local_endpoint": "http://\(localIP):\(port)",
-            "expires_at": Int64(Date().timeIntervalSince1970) + 600
+            "expires_at": Int64(Date().timeIntervalSince1970 * 1000) + 600_000
         ]
 
         if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted]),
@@ -147,7 +147,22 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
     }
 
     public func generatePairingQRImage() -> NSImage? {
-        let payloadString = "http://\(localIP):\(port)/pair?id=\(localDevice.id)&name=\(localDevice.deviceName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&key=\(localDevice.publicKey)"
+        let payload: [String: Any] = [
+            "version": 1,
+            "pairing_id": UUID().uuidString,
+            "device_id": localDevice.id,
+            "device_name": localDevice.deviceName,
+            "platform": "macos",
+            "public_key": localDevice.publicKey,
+            "exchange_key": localDevice.exchangeKey,
+            "local_endpoint": "http://\(localIP):\(port)",
+            "expires_at": Int64(Date().timeIntervalSince1970 * 1000) + 600_000
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []),
+              let payloadString = String(data: jsonData, encoding: .utf8) else {
+            return nil
+        }
 
         let context = CIContext()
         guard let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
@@ -379,9 +394,9 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
             localEndpoint: payload.localEndpoint,
             isOnlineLocally: true
         )
-        addTrustedDevice(dev)
 
         DispatchQueue.main.async {
+            self.addTrustedDevice(dev)
             self.statusBanner = "✓ Paired with \(dev.deviceName) (\(dev.platform))"
             let n = NSUserNotification()
             n.title = "TriLink Paired"
