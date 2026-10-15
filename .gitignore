@@ -46,3 +46,5 @@ __pycache__/
 scratch/
 tmp/
 temp_downloads/
+bin/
+*.zip
