@@ -19,7 +19,7 @@ final class PathSanitizerTests: XCTestCase {
     }
 
     func testEmptyFallback() {
-        let sanitized = PathSanitizer.sanitizeFilename("   ", fallback = "untitled.dat")
+        let sanitized = PathSanitizer.sanitizeFilename("   ", fallback: "untitled.dat")
         XCTAssertEqual(sanitized, "untitled.dat")
     }
 
