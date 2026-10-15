@@ -1,6 +1,5 @@
 package com.trilink.app.ui.qr
 
-import android.content.ContextWrapper
 import android.view.ViewGroup
 import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
@@ -26,11 +25,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
@@ -76,6 +75,7 @@ private class QrCodeFrameAnalyzer(
 @Composable
 fun CameraQrScanner(
     modifier: Modifier = Modifier,
+    lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     onBarcodeDetected: (String) -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "scanLine")
@@ -123,21 +123,15 @@ fun CameraQrScanner(
 
                     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                    val lifecycleOwner: LifecycleOwner? = previewView.findViewTreeLifecycleOwner()
-                        ?: (ctx as? LifecycleOwner)
-                        ?: ((ctx as? ContextWrapper)?.baseContext as? LifecycleOwner)
-
-                    lifecycleOwner?.let { owner ->
-                        try {
-                            cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(
-                                owner,
-                                cameraSelector,
-                                preview,
-                                imageAnalysis
-                            )
-                        } catch (_: Exception) {}
-                    }
+                    try {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            preview,
+                            imageAnalysis
+                        )
+                    } catch (_: Exception) {}
                 }, ContextCompat.getMainExecutor(ctx))
 
                 previewView

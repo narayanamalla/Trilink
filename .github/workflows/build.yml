@@ -55,19 +55,18 @@ jobs:
       - name: Build Android Debug APK
         working-directory: ./android
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../build_log.txt || (echo "=== GRADLE FAILURE ===" && tail -n 120 ../build_log.txt && exit 1)
-
-      - name: Upload Build Log on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-build-failure-log
-          path: build_log.txt
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../build_log.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "==================== GRADLE ERROR LOG ===================="
+            tail -n 120 ../build_log.txt
+            exit $EXIT_CODE
+          fi
 
       - name: Locate and Stage APK
         run: |
           mkdir -p dist-apk
-          find android -name "*.apk" -exec cp {} dist-apk/app-debug.apk \;
+          find android -name "*debug.apk" -exec cp {} dist-apk/app-debug.apk \;
           ls -la dist-apk/
 
       - name: Upload Android APK Artifact
