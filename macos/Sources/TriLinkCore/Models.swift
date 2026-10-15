@@ -130,6 +130,18 @@ public struct PairingPayload: Codable, Sendable {
     public let localEndpoint: String?
     public let expiresAt: Int64
 
+    enum CodingKeys: String, CodingKey {
+        case version
+        case pairingId, pairing_id
+        case deviceId, device_id
+        case deviceName, device_name
+        case platform
+        case publicKey, public_key
+        case exchangeKey, exchange_key
+        case localEndpoint, local_endpoint
+        case expiresAt, expires_at
+    }
+
     public init(
         version: Int = 1,
         pairingId: String = UUID().uuidString,
@@ -139,7 +151,7 @@ public struct PairingPayload: Codable, Sendable {
         publicKey: String,
         exchangeKey: String,
         localEndpoint: String? = nil,
-        expiresAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000) + 180_000
+        expiresAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000) + 600_000
     ) {
         self.version = version
         self.pairingId = pairingId
@@ -150,6 +162,45 @@ public struct PairingPayload: Codable, Sendable {
         self.exchangeKey = exchangeKey
         self.localEndpoint = localEndpoint
         self.expiresAt = expiresAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        self.pairingId = (try? container.decodeIfPresent(String.self, forKey: .pairingId))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .pairing_id))
+            ?? UUID().uuidString
+        self.deviceId = (try? container.decodeIfPresent(String.self, forKey: .deviceId))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .device_id))
+            ?? UUID().uuidString
+        self.deviceName = (try? container.decodeIfPresent(String.self, forKey: .deviceName))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .device_name))
+            ?? "Unknown Device"
+        self.platform = (try? container.decodeIfPresent(String.self, forKey: .platform)) ?? "android"
+        self.publicKey = (try? container.decodeIfPresent(String.self, forKey: .publicKey))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .public_key))
+            ?? ""
+        self.exchangeKey = (try? container.decodeIfPresent(String.self, forKey: .exchangeKey))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .exchange_key))
+            ?? ""
+        self.localEndpoint = (try? container.decodeIfPresent(String.self, forKey: .localEndpoint))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .local_endpoint))
+        self.expiresAt = (try? container.decodeIfPresent(Int64.self, forKey: .expiresAt))
+            ?? (try? container.decodeIfPresent(Int64.self, forKey: .expires_at))
+            ?? (Int64(Date().timeIntervalSince1970 * 1000) + 600_000)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(version, forKey: .version)
+        try container.encode(pairingId, forKey: .pairingId)
+        try container.encode(deviceId, forKey: .deviceId)
+        try container.encode(deviceName, forKey: .deviceName)
+        try container.encode(platform, forKey: .platform)
+        try container.encode(publicKey, forKey: .publicKey)
+        try container.encode(exchangeKey, forKey: .exchangeKey)
+        try container.encodeIfPresent(localEndpoint, forKey: .localEndpoint)
+        try container.encode(expiresAt, forKey: .expiresAt)
     }
 }
 

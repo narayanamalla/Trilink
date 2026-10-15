@@ -77,15 +77,24 @@ class RealDeviceRepository(
                 conn.doOutput = true
 
                 val myPayload = myDevicePayloadProvider()
+                val now = System.currentTimeMillis()
                 val json = JSONObject().apply {
                     put("version", 1)
                     put("pairing_id", payload.pairingId)
+                    put("pairingId", payload.pairingId)
                     put("device_id", myPayload.deviceId)
+                    put("deviceId", myPayload.deviceId)
                     put("device_name", myPayload.deviceName)
+                    put("deviceName", myPayload.deviceName)
                     put("platform", "android")
                     put("public_key", myPayload.publicKey)
+                    put("publicKey", myPayload.publicKey)
                     put("exchange_key", myPayload.exchangeKey)
+                    put("exchangeKey", myPayload.exchangeKey)
                     put("local_endpoint", myPayload.localEndpoint ?: "")
+                    put("localEndpoint", myPayload.localEndpoint ?: "")
+                    put("expires_at", now + 600_000)
+                    put("expiresAt", now + 600_000)
                 }
 
                 conn.outputStream.use { os ->

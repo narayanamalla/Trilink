@@ -164,7 +164,35 @@ public final class LocalTransferServer: @unchecked Sendable {
 
         // Pair endpoint
         if method == "POST" && path == "/api/v1/pair" {
-            guard let payload = try? JSONDecoder().decode(PairingPayload.self, from: initialBody) else {
+            var resolvedPayload: PairingPayload? = try? JSONDecoder().decode(PairingPayload.self, from: initialBody)
+            if resolvedPayload == nil {
+                let snakeDecoder = JSONDecoder()
+                snakeDecoder.keyDecodingStrategy = .convertFromSnakeCase
+                resolvedPayload = try? snakeDecoder.decode(PairingPayload.self, from: initialBody)
+            }
+            if resolvedPayload == nil, let json = (try? JSONSerialization.jsonObject(with: initialBody)) as? [String: Any] {
+                let pId = (json["pairing_id"] as? String) ?? (json["pairingId"] as? String) ?? UUID().uuidString
+                let dId = (json["device_id"] as? String) ?? (json["deviceId"] as? String) ?? UUID().uuidString
+                let dName = (json["device_name"] as? String) ?? (json["deviceName"] as? String) ?? "Android Device"
+                let plat = (json["platform"] as? String) ?? "android"
+                let pubK = (json["public_key"] as? String) ?? (json["publicKey"] as? String) ?? ""
+                let exK = (json["exchange_key"] as? String) ?? (json["exchangeKey"] as? String) ?? ""
+                let ep = (json["local_endpoint"] as? String) ?? (json["localEndpoint"] as? String)
+                let exp = (json["expires_at"] as? Int64) ?? (json["expiresAt"] as? Int64) ?? (Int64(Date().timeIntervalSince1970 * 1000) + 600_000)
+                resolvedPayload = PairingPayload(
+                    version: (json["version"] as? Int) ?? 1,
+                    pairingId: pId,
+                    deviceId: dId,
+                    deviceName: dName,
+                    platform: plat,
+                    publicKey: pubK,
+                    exchangeKey: exK,
+                    localEndpoint: ep,
+                    expiresAt: exp
+                )
+            }
+
+            guard let payload = resolvedPayload else {
                 sendResponse(connection: connection, statusCode: 400, body: "Invalid Pairing Payload")
                 return
             }
