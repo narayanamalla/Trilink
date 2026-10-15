@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "transfer_id": "a9b8c7d6-e5f4-4321-abcd-0123456789ab",
+  "sender_device_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "recipient_device_id": "98765432-abcd-ef01-2345-6789abcdef01",
+  "item_type": "file",
+  "display_name": "quarterly_presentation.pdf",
+  "mime_type": "application/pdf",
+  "size_bytes": 4194304,
+  "sha256": "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
+  "delivery_mode": "local",
+  "text_content": null,
+  "created_at": 1773565010
+}

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "transfer_id": "a9b8c7d6-e5f4-4321-abcd-0123456789ab",
+  "status": "delivered",
+  "bytes_transferred": 4194304,
+  "total_bytes": 4194304,
+  "failure_code": null,
+  "failure_reason": null,
+  "updated_at": 1773565025
+}

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "pairing_id": "8f7e6d5c-4b3a-2109-8765-4321fedcba98",
+  "device_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "device_name": "Realme 11 Pro+",
+  "platform": "android",
+  "public_key": "MCowBQYDK2VwAyEAfv1Qz80J98GzM7Vj1GfFmN77yEw4VlF/xXhKz0eGq+A=",
+  "exchange_key": "MCowBQYDK2VuAyEAO2e4h5q0+jY7T4mF2/wV7lK8z1nK4tM1/n3h5Q5F+qA=",
+  "local_endpoint": "http://192.168.1.50:42425",
+  "expires_at": 1773565000
+}

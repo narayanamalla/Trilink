@@ -1,0 +1,48 @@
+# Git ignore rules for TriLink
+
+# Environment and secrets
+.env
+.env.local
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+google-services.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+build/
+DerivedData/
+*.xcworkspace
+!default.xcworkspace
+xcuserdata/
+*.xcuserdatad
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+*.apk
+*.aab
+
+# Node / JS
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+
+# Temporary test transfers
+scratch/
+tmp/
+temp_downloads/

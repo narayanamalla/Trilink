@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TransferRequest",
+  "type": "object",
+  "properties": {
+    "version": { "type": "integer", "enum": [1] },
+    "transfer_id": { "type": "string", "format": "uuid" },
+    "sender_device_id": { "type": "string", "format": "uuid" },
+    "recipient_device_id": { "type": "string", "format": "uuid" },
+    "item_type": { "type": "string", "enum": ["text", "url", "image", "file"] },
+    "display_name": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "mime_type": { "type": "string" },
+    "size_bytes": { "type": "integer", "minimum": 0 },
+    "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+    "delivery_mode": { "type": "string", "enum": ["local", "remote"] },
+    "text_content": { "type": "string" },
+    "created_at": { "type": "integer" }
+  },
+  "required": [
+    "version",
+    "transfer_id",
+    "sender_device_id",
+    "recipient_device_id",
+    "item_type",
+    "display_name",
+    "size_bytes",
+    "sha256",
+    "delivery_mode",
+    "created_at"
+  ],
+  "additionalProperties": false
+}

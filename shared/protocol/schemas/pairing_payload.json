@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PairingPayload",
+  "type": "object",
+  "properties": {
+    "version": { "type": "integer", "enum": [1] },
+    "pairing_id": { "type": "string", "format": "uuid" },
+    "device_id": { "type": "string", "format": "uuid" },
+    "device_name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "platform": { "type": "string", "enum": ["android", "macos"] },
+    "public_key": { "type": "string", "minLength": 16 },
+    "exchange_key": { "type": "string", "minLength": 16 },
+    "local_endpoint": { "type": "string", "format": "uri" },
+    "expires_at": { "type": "integer" }
+  },
+  "required": [
+    "version",
+    "pairing_id",
+    "device_id",
+    "device_name",
+    "platform",
+    "public_key",
+    "exchange_key",
+    "expires_at"
+  ],
+  "additionalProperties": false
+}
