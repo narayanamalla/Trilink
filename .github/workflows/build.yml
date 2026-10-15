@@ -87,7 +87,7 @@ jobs:
 
       - name: Run Swift Tests
         working-directory: ./macos
-        run: swift test -Xswiftc -suppress-warnings
+        run: swift test --verbose
 
       - name: Build macOS Release Binary
         working-directory: ./macos
