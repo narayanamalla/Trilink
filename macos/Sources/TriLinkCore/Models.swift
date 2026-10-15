@@ -66,7 +66,7 @@ public struct Transfer: Identifiable, Codable, Sendable {
     public let senderDeviceId: String
     public let recipientDeviceId: String
     public let itemType: ItemType
-    public let displayName: String
+    public var displayName: String
     public var mimeType: String?
     public let sizeBytes: Int64
     public let sha256: String

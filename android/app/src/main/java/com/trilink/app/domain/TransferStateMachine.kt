@@ -117,7 +117,7 @@ object TransferStateMachine {
             }
             if (event == null) false
             else nextState(current, event, mode) == to
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             false
         }
     }

@@ -131,7 +131,7 @@ fun CameraQrScanner(
                             preview,
                             imageAnalysis
                         )
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {}
                 }, ContextCompat.getMainExecutor(ctx))
 
                 previewView

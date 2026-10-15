@@ -35,7 +35,7 @@ object LocalTransferSender {
             val resolvedMimeType = mimeType ?: if (transfer.localPath != null) {
                 try {
                     com.trilink.app.domain.FileUtils.resolveUriDetails(context, Uri.parse(transfer.localPath)).mimeType
-                } catch (_: Exception) { null }
+                } catch (e: Exception) { null }
             } else null
 
             // 1. Resolve payload bytes

@@ -59,7 +59,7 @@ class RealDeviceRepository(
             if (!normalizedEndpoint.startsWith("http://") && !normalizedEndpoint.startsWith("https://")) {
                 normalizedEndpoint = "http://$normalizedEndpoint"
             }
-            val parsedUrl = try { URL(normalizedEndpoint) } catch (_: Exception) { null }
+            val parsedUrl = try { URL(normalizedEndpoint) } catch (e: Exception) { null }
             val baseUrl = if (parsedUrl != null) {
                 "${parsedUrl.protocol}://${parsedUrl.authority}"
             } else {

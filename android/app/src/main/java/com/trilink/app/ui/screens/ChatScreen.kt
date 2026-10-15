@@ -256,7 +256,7 @@ fun ChatScreen(
                                                     try {
                                                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(content))
                                                         context.startActivity(intent)
-                                                    } catch (_: Exception) {
+                                                    } catch (e: Exception) {
                                                         Toast.makeText(context, "Could not open URL", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }

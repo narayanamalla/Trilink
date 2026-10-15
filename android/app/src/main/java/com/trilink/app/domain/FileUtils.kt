@@ -17,7 +17,7 @@ object FileUtils {
         var size = 0L
         val mimeType = try {
             context.contentResolver.getType(uri)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             null
         }
 
@@ -35,7 +35,7 @@ object FileUtils {
                         }
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {}
         }
 
         if (name.isBlank()) {
@@ -58,7 +58,7 @@ object FileUtils {
                 context.contentResolver.openFileDescriptor(uri, "r")?.use {
                     size = it.statSize
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {}
         }
 
         val sanitized = PathSanitizer.sanitizeFilename(name, fallback = "file")
