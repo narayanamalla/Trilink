@@ -96,7 +96,7 @@ jobs:
       - name: Package TriLink.app
         run: |
           mkdir -p dist
-          ./scripts/package_macos_app.sh ./dist ./macos/.build/release/trilink-mac
+          ./scripts/package_macos_app.sh ./dist
 
       - name: Upload macOS App Artifact
         uses: actions/upload-artifact@v4

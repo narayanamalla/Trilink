@@ -6,6 +6,18 @@ OUTPUT_DIR="${1:-./build}"
 BINARY_PATH="${2:-./bin/trilink-mac}"
 APP_BUNDLE="${OUTPUT_DIR}/${APP_NAME}.app"
 
+if [ ! -f "${BINARY_PATH}" ]; then
+    echo "Searching for trilink-mac binary..."
+    FOUND=$(find ./macos/.build ./.build -name "trilink-mac" -type f 2>/dev/null | head -n 1)
+    if [ -n "$FOUND" ] && [ -f "$FOUND" ]; then
+        echo "Resolved binary at ${FOUND}"
+        BINARY_PATH="$FOUND"
+    else
+        echo "Error: Binary ${BINARY_PATH} not found and could not be resolved in .build"
+        exit 1
+    fi
+fi
+
 echo "==> Creating ${APP_BUNDLE}..."
 mkdir -p "${APP_BUNDLE}/Contents/MacOS"
 mkdir -p "${APP_BUNDLE}/Contents/Resources"
