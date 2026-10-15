@@ -499,7 +499,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
                 if self.trustedDevices[idx].localEndpoint != endpoint || !self.trustedDevices[idx].isOnlineLocally {
                     self.trustedDevices[idx].localEndpoint = endpoint
                     self.trustedDevices[idx].isOnlineLocally = true
-                    self.saveTrustedDevices()
+                    self.deviceBox.set(self.trustedDevices[idx])
                 }
             }
         }
@@ -519,7 +519,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
             }
             trustedDevices[idx].localEndpoint = ep.isEmpty ? nil : ep
             trustedDevices[idx].isOnlineLocally = !ep.isEmpty
-            saveTrustedDevices()
+            deviceBox.set(trustedDevices[idx])
             statusBanner = "✓ Updated endpoint for \(trustedDevices[idx].deviceName) to \(ep)"
         }
     }
