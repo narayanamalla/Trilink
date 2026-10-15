@@ -22,16 +22,7 @@ class MainActivity : ComponentActivity() {
         val deviceRepo = app.deviceRepository
         val transferRepo = app.transferRepository
 
-        val currentDevicePayload = PairingPayload(
-            version = 1,
-            pairingId = UUID.randomUUID().toString(),
-            deviceId = "android-device-local",
-            deviceName = "Android Device",
-            platform = "android",
-            publicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-            exchangeKey = "MCowBQYDK2VuAyEA...",
-            localEndpoint = "http://127.0.0.1:42425"
-        )
+        val currentDevicePayload = app.currentDevicePayload
 
         setContent {
             TriLinkTheme {

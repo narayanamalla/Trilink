@@ -153,27 +153,44 @@ fun PairQrScreen(
                         Button(
                             onClick = {
                                 try {
-                                    // Simulated parsing for manual fallback or QR scan
-                                    val parts = manualTokenInput.trim()
-                                    if (parts.isEmpty()) {
+                                    val input = manualTokenInput.trim()
+                                    if (input.isEmpty()) {
                                         parseError = "Please enter a valid pairing code."
                                         return@Button
                                     }
-                                    // Approved
-                                    onPairApproved(
+
+                                    val payload = if (input.startsWith("{")) {
+                                        val json = org.json.JSONObject(input)
+                                        PairingPayload(
+                                            version = json.optInt("version", 1),
+                                            pairingId = json.optString("pairing_id", java.util.UUID.randomUUID().toString()),
+                                            deviceId = json.getString("device_id"),
+                                            deviceName = json.optString("device_name", "MacBook Air"),
+                                            platform = json.optString("platform", "macos"),
+                                            publicKey = json.getString("public_key"),
+                                            exchangeKey = json.getString("exchange_key"),
+                                            localEndpoint = json.optString("local_endpoint", null),
+                                            expiresAt = json.optLong("expires_at", System.currentTimeMillis() + 600_000)
+                                        )
+                                    } else {
+                                        val endpoint = if (input.startsWith("http")) input else "http://$input"
                                         PairingPayload(
                                             version = 1,
-                                            pairingId = "manual-pair",
-                                            deviceId = "peer-device-id",
-                                            deviceName = "Peer Device",
+                                            pairingId = java.util.UUID.randomUUID().toString(),
+                                            deviceId = "macbook-peer",
+                                            deviceName = "MacBook Air",
                                             platform = "macos",
-                                            publicKey = "MCowBQYDK2VwAyE...",
-                                            exchangeKey = "MCowBQYDK2VuAyE..."
+                                            publicKey = "MCowBQYDK2VwAyEAXyZ...",
+                                            exchangeKey = "MCowBQYDK2VuAyEA9kL...",
+                                            localEndpoint = endpoint,
+                                            expiresAt = System.currentTimeMillis() + 600_000
                                         )
-                                    )
+                                    }
+
+                                    onPairApproved(payload)
                                     onBack()
                                 } catch (e: Exception) {
-                                    parseError = "Failed to parse pairing token: ${e.message}"
+                                    parseError = "Failed to parse pairing code: ${e.message}"
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()

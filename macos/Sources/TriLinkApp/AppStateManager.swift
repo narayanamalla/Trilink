@@ -178,6 +178,23 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
                 isOnlineLocally: true
             )
             addTrustedDevice(dev)
+
+            if let ep = payload.localEndpoint, !ep.isEmpty {
+                let myPayload = PairingPayload(
+                    version: 1,
+                    pairingId: UUID().uuidString,
+                    deviceId: localDevice.id,
+                    deviceName: localDevice.deviceName,
+                    platform: "macos",
+                    publicKey: localDevice.publicKey,
+                    exchangeKey: localDevice.exchangeKey,
+                    localEndpoint: "http://\(localIP):\(port)"
+                )
+                Task {
+                    _ = try? await self.client.sendPairingRequest(endpoint: ep, payload: myPayload)
+                }
+            }
+
             self.statusBanner = "✓ Paired successfully with \(dev.deviceName)!"
             return
         }
