@@ -56,21 +56,7 @@ jobs:
 
       - name: Build Android Debug APK
         working-directory: ./android
-        run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../build_log.txt
-          EXIT_CODE=${PIPESTATUS[0]}
-          if [ $EXIT_CODE -ne 0 ]; then
-            git config user.name "CI Bot"
-            git config user.email "ci@trilink.app"
-            git checkout -B build-error-log
-            cp ../build_log.txt ./error.txt
-            git add error.txt
-            git commit -m "ci: capture build error"
-            git push origin build-error-log --force || true
-            echo "==================== GRADLE ERROR LOG ===================="
-            tail -n 120 ../build_log.txt
-            exit $EXIT_CODE
-          fi
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Locate and Stage APK
         run: |
