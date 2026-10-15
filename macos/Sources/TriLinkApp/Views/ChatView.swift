@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import TriLinkCore
 
 struct ChatView: View {
