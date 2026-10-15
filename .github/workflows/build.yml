@@ -92,7 +92,7 @@ jobs:
 
       - name: Build macOS Release Binary
         working-directory: ./macos
-        run: swift build -c release -Xswiftc -suppress-warnings
+        run: swift build -c release
 
       - name: Package TriLink.app
         run: |

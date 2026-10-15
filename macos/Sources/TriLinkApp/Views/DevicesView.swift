@@ -129,16 +129,13 @@ struct DevicesView: View {
                                         Text(device.deviceName)
                                             .font(.headline)
 
-                                        let hasEndpoint = !(device.localEndpoint?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
-                                        let epDisplay = hasEndpoint ? device.localEndpoint! : "No local endpoint"
-
                                         HStack(spacing: 6) {
                                             Circle()
-                                                .fill(hasEndpoint ? Color.green : Color.orange)
+                                                .fill(endpointStatusColor(device))
                                                 .frame(width: 8, height: 8)
-                                            Text("Platform: \(device.platform.capitalized) • Endpoint: \(epDisplay)")
+                                            Text("Platform: \(device.platform.capitalized) • Endpoint: \(endpointDisplayText(device))")
                                                 .font(.caption)
-                                                .foregroundColor(hasEndpoint ? .secondary : .orange)
+                                                .foregroundColor(device.localEndpoint?.isEmpty == false ? .secondary : .orange)
                                         }
 
                                         if editingDeviceId == device.id {
@@ -196,6 +193,19 @@ struct DevicesView: View {
                 }
             }
             .padding(24)
+    }
+
+    private func endpointDisplayText(_ device: Device) -> String {
+        if let ep = device.localEndpoint, !ep.trimmingCharacters(in: .whitespaces).isEmpty {
+            return ep
         }
+        return "No local endpoint"
+    }
+
+    private func endpointStatusColor(_ device: Device) -> Color {
+        if let ep = device.localEndpoint, !ep.trimmingCharacters(in: .whitespaces).isEmpty {
+            return .green
+        }
+        return .orange
     }
 }
