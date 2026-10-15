@@ -8,8 +8,13 @@ final class LocalTransferIntegrationTests: XCTestCase {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
+        let serverDownloadsDir = tempDir.appendingPathComponent("downloads")
+        let clientUploadsDir = tempDir.appendingPathComponent("uploads")
+        try FileManager.default.createDirectory(at: serverDownloadsDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: clientUploadsDir, withIntermediateDirectories: true)
+
         let testPort: UInt16 = 42431
-        let server = LocalTransferServer(port: testPort, downloadsDirectory: tempDir)
+        let server = LocalTransferServer(port: testPort, downloadsDirectory: serverDownloadsDir)
 
         let senderSecurity = SecurityManager()
         let senderDeviceId = "device-sender-uuid"
@@ -46,7 +51,7 @@ final class LocalTransferIntegrationTests: XCTestCase {
 
         // 2. Transfer file
         let filePayload = Data((0..<65536).map { UInt8($0 % 256) })
-        let sourceFile = tempDir.appendingPathComponent("sample_image.png")
+        let sourceFile = clientUploadsDir.appendingPathComponent("sample_image.png")
         try filePayload.write(to: sourceFile)
 
         let transferId = UUID().uuidString
@@ -60,9 +65,9 @@ final class LocalTransferIntegrationTests: XCTestCase {
         )
 
         // Wait briefly for file write and verify
-        try await Task.sleep(nanoseconds: 200_000_000)
+        try await Task.sleep(nanoseconds: 300_000_000)
 
-        let destinationFile = tempDir.appendingPathComponent("sample_image.png")
+        let destinationFile = serverDownloadsDir.appendingPathComponent("sample_image.png")
         XCTAssertTrue(FileManager.default.fileExists(atPath: destinationFile.path), "Received file must exist in download folder")
         let receivedBytes = try Data(contentsOf: destinationFile)
         XCTAssertEqual(receivedBytes, filePayload, "Received file bytes must match sent file bytes exactly")

@@ -89,6 +89,29 @@ public final class LocalTransferServer: @unchecked Sendable {
                     return
                 }
 
+                let lines = headerString.components(separatedBy: "\r\n")
+                let requestLine = lines.first ?? ""
+                let parts = requestLine.split(separator: " ")
+                let path = parts.count >= 2 ? String(parts[1]) : ""
+
+                var contentLength: Int? = nil
+                for line in lines.dropFirst() {
+                    if let colon = line.firstIndex(of: ":") {
+                        let key = line[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+                        let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+                        if key == "content-length" {
+                            contentLength = Int(value)
+                        }
+                    }
+                }
+
+                if !path.contains("/payload"), let expectedLength = contentLength, bodyData.count < expectedLength {
+                    if !isComplete {
+                        self.readRequest(connection: connection, accumulatedData: current)
+                        return
+                    }
+                }
+
                 self.processHttpRequest(
                     connection: connection,
                     headerString: headerString,
@@ -175,7 +198,22 @@ public final class LocalTransferServer: @unchecked Sendable {
         }
 
         // Verify signature
-        let bodySha = SecurityManager.sha256Hex(data: initialBody)
+        let bodySha: String
+        if path.contains("/payload") {
+            let comps = path.split(separator: "/")
+            if comps.count >= 4 {
+                let transferId = String(comps[3])
+                self.lock.lock()
+                let reqSha = self.activeTransfers[transferId]?.request.sha256
+                self.lock.unlock()
+                bodySha = reqSha ?? SecurityManager.sha256Hex(data: initialBody)
+            } else {
+                bodySha = SecurityManager.sha256Hex(data: initialBody)
+            }
+        } else {
+            bodySha = SecurityManager.sha256Hex(data: initialBody)
+        }
+
         let isValid = SecurityManager.verifySignature(
             publicKeyBase64: peerDevice.publicKey,
             signatureBase64: signature,

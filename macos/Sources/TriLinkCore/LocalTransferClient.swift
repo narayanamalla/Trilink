@@ -84,9 +84,10 @@ public final class LocalTransferClient: @unchecked Sendable {
         request.setValue(signature, forHTTPHeaderField: "X-TriLink-Signature")
         request.httpBody = initiateBody
 
-        let (_, initResponse) = try await URLSession.shared.data(for: request)
+        let (initData, initResponse) = try await URLSession.shared.data(for: request)
         guard let httpInit = initResponse as? HTTPURLResponse, httpInit.statusCode == 200 else {
-            throw URLError(.badServerResponse)
+            let errorText = String(data: initData, encoding: .utf8) ?? "Unknown error"
+            throw URLError(.badServerResponse, userInfo: [NSLocalizedDescriptionKey: errorText])
         }
 
         // 2. Stream Payload
