@@ -35,7 +35,7 @@ object LocalTransferSender {
                 ItemType.TEXT, ItemType.URL -> {
                     transfer.textContent?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
                 }
-                ItemType.FILE -> {
+                ItemType.FILE, ItemType.IMAGE -> {
                     val uriStr = transfer.localPath
                     if (uriStr != null) {
                         val uri = Uri.parse(uriStr)
@@ -48,6 +48,9 @@ object LocalTransferSender {
                     } else {
                         ByteArray(0)
                     }
+                }
+                else -> {
+                    transfer.textContent?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
                 }
             }
 
