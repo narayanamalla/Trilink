@@ -14,6 +14,8 @@ import com.trilink.app.ui.theme.TriLinkTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+import com.trilink.app.data.repository.LocalTransferSender
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,36 +41,70 @@ class MainActivity : ComponentActivity() {
                     remoteDeliveryEnabled = remoteDeliveryEnabled,
                     onSendText = { target, text, itemType ->
                         lifecycleScope.launch {
+                            val bytes = text.toByteArray(Charsets.UTF_8)
                             val transfer = Transfer(
                                 senderDeviceId = currentDevicePayload.deviceId,
                                 recipientDeviceId = target.id,
                                 itemType = itemType,
                                 displayName = if (itemType == ItemType.URL) "Link" else "Text note",
-                                sizeBytes = text.toByteArray().size.toLong(),
-                                sha256 = "dummy-sha-text",
+                                sizeBytes = bytes.size.toLong(),
+                                sha256 = "pending",
                                 deliveryMode = if (target.isOnlineLocally) DeliveryMode.LOCAL else DeliveryMode.REMOTE,
                                 status = TransferStatus.UPLOADING,
                                 textContent = text
                             )
                             transferRepo.createTransfer(transfer)
-                            Toast.makeText(this@MainActivity, "Transfer initiated to ${target.deviceName}", Toast.LENGTH_SHORT).show()
+                            val ep = target.localEndpoint
+                            if (!ep.isNullOrBlank()) {
+                                val res = LocalTransferSender.executeTransfer(
+                                    context = this@MainActivity,
+                                    transfer = transfer,
+                                    targetEndpoint = ep,
+                                    transferRepo = transferRepo
+                                ) { _ -> }
+                                if (res.isSuccess) {
+                                    Toast.makeText(this@MainActivity, "✓ Delivered to ${target.deviceName}", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(this@MainActivity, "Failed: ${res.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                                }
+                            } else {
+                                Toast.makeText(this@MainActivity, "Target endpoint not found", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     },
                     onSendFile = { target, uri ->
                         lifecycleScope.launch {
+                            val fileSize = try {
+                                contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+                            } catch (_: Exception) { 0L }
                             val transfer = Transfer(
                                 senderDeviceId = currentDevicePayload.deviceId,
                                 recipientDeviceId = target.id,
                                 itemType = ItemType.FILE,
                                 displayName = uri.lastPathSegment ?: "file",
-                                sizeBytes = 1024,
-                                sha256 = "dummy-sha-file",
+                                sizeBytes = fileSize,
+                                sha256 = "pending",
                                 deliveryMode = if (target.isOnlineLocally) DeliveryMode.LOCAL else DeliveryMode.REMOTE,
                                 status = TransferStatus.UPLOADING,
                                 localPath = uri.toString()
                             )
                             transferRepo.createTransfer(transfer)
-                            Toast.makeText(this@MainActivity, "File transfer started", Toast.LENGTH_SHORT).show()
+                            val ep = target.localEndpoint
+                            if (!ep.isNullOrBlank()) {
+                                val res = LocalTransferSender.executeTransfer(
+                                    context = this@MainActivity,
+                                    transfer = transfer,
+                                    targetEndpoint = ep,
+                                    transferRepo = transferRepo
+                                ) { _ -> }
+                                if (res.isSuccess) {
+                                    Toast.makeText(this@MainActivity, "✓ Delivered to ${target.deviceName}", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(this@MainActivity, "Failed: ${res.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                                }
+                            } else {
+                                Toast.makeText(this@MainActivity, "Target endpoint not found", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     },
                     onPairApproved = { payload ->
@@ -94,7 +130,16 @@ class MainActivity : ComponentActivity() {
                     },
                     onRetryTransfer = { transfer ->
                         lifecycleScope.launch {
-                            transferRepo.updateTransferProgress(transfer.id, TransferStatus.UPLOADING, 0)
+                            val target = devices.find { it.id == transfer.recipientDeviceId }
+                            val ep = target?.localEndpoint
+                            if (!ep.isNullOrBlank()) {
+                                LocalTransferSender.executeTransfer(
+                                    context = this@MainActivity,
+                                    transfer = transfer,
+                                    targetEndpoint = ep,
+                                    transferRepo = transferRepo
+                                ) { _ -> }
+                            }
                         }
                     },
                     onDeleteInboxItem = { id ->

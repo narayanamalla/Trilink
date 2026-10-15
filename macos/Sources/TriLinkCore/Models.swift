@@ -218,6 +218,21 @@ public struct TransferInitiateRequest: Codable, Sendable {
     public let textContent: String?
     public let createdAt: Int64
 
+    enum CodingKeys: String, CodingKey {
+        case version
+        case transferId, transfer_id
+        case senderDeviceId, sender_device_id
+        case recipientDeviceId, recipient_device_id
+        case itemType, item_type
+        case displayName, display_name
+        case mimeType, mime_type
+        case sizeBytes, size_bytes
+        case sha256
+        case deliveryMode, delivery_mode
+        case textContent, text_content
+        case createdAt, created_at
+    }
+
     public init(
         version: Int = 1,
         transferId: String,
@@ -244,6 +259,58 @@ public struct TransferInitiateRequest: Codable, Sendable {
         self.deliveryMode = deliveryMode
         self.textContent = textContent
         self.createdAt = createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        self.transferId = (try? container.decodeIfPresent(String.self, forKey: .transferId))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .transfer_id))
+            ?? UUID().uuidString
+        self.senderDeviceId = (try? container.decodeIfPresent(String.self, forKey: .senderDeviceId))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .sender_device_id))
+            ?? ""
+        self.recipientDeviceId = (try? container.decodeIfPresent(String.self, forKey: .recipientDeviceId))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .recipient_device_id))
+            ?? ""
+        let itemTypeRaw = (try? container.decodeIfPresent(String.self, forKey: .itemType))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .item_type))
+            ?? "file"
+        self.itemType = ItemType(rawValue: itemTypeRaw.lowercased()) ?? .file
+        self.displayName = (try? container.decodeIfPresent(String.self, forKey: .displayName))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .display_name))
+            ?? "file"
+        self.mimeType = (try? container.decodeIfPresent(String.self, forKey: .mimeType))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .mime_type))
+        self.sizeBytes = (try? container.decodeIfPresent(Int64.self, forKey: .sizeBytes))
+            ?? (try? container.decodeIfPresent(Int64.self, forKey: .size_bytes))
+            ?? 0
+        self.sha256 = (try? container.decodeIfPresent(String.self, forKey: .sha256)) ?? ""
+        let modeRaw = (try? container.decodeIfPresent(String.self, forKey: .deliveryMode))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .delivery_mode))
+            ?? "local"
+        self.deliveryMode = DeliveryMode(rawValue: modeRaw.lowercased()) ?? .local
+        self.textContent = (try? container.decodeIfPresent(String.self, forKey: .textContent))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .text_content))
+        self.createdAt = (try? container.decodeIfPresent(Int64.self, forKey: .createdAt))
+            ?? (try? container.decodeIfPresent(Int64.self, forKey: .created_at))
+            ?? Int64(Date().timeIntervalSince1970 * 1000)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(version, forKey: .version)
+        try container.encode(transferId, forKey: .transferId)
+        try container.encode(senderDeviceId, forKey: .senderDeviceId)
+        try container.encode(recipientDeviceId, forKey: .recipientDeviceId)
+        try container.encode(itemType.rawValue, forKey: .itemType)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encodeIfPresent(mimeType, forKey: .mimeType)
+        try container.encode(sizeBytes, forKey: .sizeBytes)
+        try container.encode(sha256, forKey: .sha256)
+        try container.encode(deliveryMode.rawValue, forKey: .deliveryMode)
+        try container.encodeIfPresent(textContent, forKey: .textContent)
+        try container.encode(createdAt, forKey: .createdAt)
     }
 }
 

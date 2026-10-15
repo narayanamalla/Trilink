@@ -71,35 +71,50 @@ class ShareActivity : ComponentActivity() {
                                 OutlinedButton(
                                     onClick = {
                                         lifecycleScope.launch {
+                                            val targetEp = device.localEndpoint
                                             if (sharedText != null) {
                                                 val isUrl = sharedText.startsWith("http://") || sharedText.startsWith("https://")
-                                                transferRepo.createTransfer(
-                                                    Transfer(
-                                                        senderDeviceId = "android-local",
-                                                        recipientDeviceId = device.id,
-                                                        itemType = if (isUrl) ItemType.URL else ItemType.TEXT,
-                                                        displayName = if (isUrl) "Shared Link" else "Shared Note",
-                                                        sizeBytes = sharedText.toByteArray().size.toLong(),
-                                                        sha256 = "dummy-sha",
-                                                        deliveryMode = if (device.isOnlineLocally) DeliveryMode.LOCAL else DeliveryMode.REMOTE,
-                                                        status = TransferStatus.UPLOADING,
-                                                        textContent = sharedText
-                                                    )
+                                                val t = Transfer(
+                                                    senderDeviceId = "android-local",
+                                                    recipientDeviceId = device.id,
+                                                    itemType = if (isUrl) ItemType.URL else ItemType.TEXT,
+                                                    displayName = if (isUrl) "Shared Link" else "Shared Note",
+                                                    sizeBytes = sharedText.toByteArray().size.toLong(),
+                                                    sha256 = "pending",
+                                                    deliveryMode = if (device.isOnlineLocally) DeliveryMode.LOCAL else DeliveryMode.REMOTE,
+                                                    status = TransferStatus.UPLOADING,
+                                                    textContent = sharedText
                                                 )
+                                                transferRepo.createTransfer(t)
+                                                if (!targetEp.isNullOrBlank()) {
+                                                    com.trilink.app.data.repository.LocalTransferSender.executeTransfer(
+                                                        context = this@ShareActivity,
+                                                        transfer = t,
+                                                        targetEndpoint = targetEp,
+                                                        transferRepo = transferRepo
+                                                    ) { _ -> }
+                                                }
                                             } else if (sharedUri != null) {
-                                                transferRepo.createTransfer(
-                                                    Transfer(
-                                                        senderDeviceId = "android-local",
-                                                        recipientDeviceId = device.id,
-                                                        itemType = ItemType.FILE,
-                                                        displayName = sharedUri.lastPathSegment ?: "shared_file",
-                                                        sizeBytes = 1024,
-                                                        sha256 = "dummy-sha",
-                                                        deliveryMode = if (device.isOnlineLocally) DeliveryMode.LOCAL else DeliveryMode.REMOTE,
-                                                        status = TransferStatus.UPLOADING,
-                                                        localPath = sharedUri.toString()
-                                                    )
+                                                val t = Transfer(
+                                                    senderDeviceId = "android-local",
+                                                    recipientDeviceId = device.id,
+                                                    itemType = ItemType.FILE,
+                                                    displayName = sharedUri.lastPathSegment ?: "shared_file",
+                                                    sizeBytes = 1024,
+                                                    sha256 = "pending",
+                                                    deliveryMode = if (device.isOnlineLocally) DeliveryMode.LOCAL else DeliveryMode.REMOTE,
+                                                    status = TransferStatus.UPLOADING,
+                                                    localPath = sharedUri.toString()
                                                 )
+                                                transferRepo.createTransfer(t)
+                                                if (!targetEp.isNullOrBlank()) {
+                                                    com.trilink.app.data.repository.LocalTransferSender.executeTransfer(
+                                                        context = this@ShareActivity,
+                                                        transfer = t,
+                                                        targetEndpoint = targetEp,
+                                                        transferRepo = transferRepo
+                                                    ) { _ -> }
+                                                }
                                             }
                                             Toast.makeText(this@ShareActivity, "Sending to ${device.deviceName}...", Toast.LENGTH_SHORT).show()
                                             finish()
