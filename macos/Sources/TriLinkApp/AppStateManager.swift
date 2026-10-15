@@ -22,6 +22,29 @@ public enum NavigationTab: String, CaseIterable, Identifiable {
     }
 }
 
+final class ThreadSafeDeviceBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var devices: [String: Device] = [:]
+
+    func set(_ device: Device) {
+        lock.lock()
+        devices[device.id] = device
+        lock.unlock()
+    }
+
+    func remove(_ id: String) {
+        lock.lock()
+        devices.removeValue(forKey: id)
+        lock.unlock()
+    }
+
+    func getAll() -> [String: Device] {
+        lock.lock()
+        defer { lock.unlock() }
+        return devices
+    }
+}
+
 @MainActor
 public final class AppStateManager: ObservableObject, LocalTransferServerDelegate, @unchecked Sendable {
     @Published public var selectedTab: NavigationTab = .send
@@ -38,8 +61,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
     private var server: LocalTransferServer?
     private let security = SecurityManager()
     private let client: LocalTransferClient
-    private let lock = NSLock()
-    private var trustedDevicesStore: [String: Device] = [:]
+    private let deviceBox = ThreadSafeDeviceBox()
 
     public init() {
         let userDownloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
@@ -60,10 +82,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
             isOnlineLocally: true
         )
         self.localDevice = initialDevice
-
-        self.lock.lock()
-        self.trustedDevicesStore[devId] = initialDevice
-        self.lock.unlock()
+        self.deviceBox.set(initialDevice)
 
         refreshIP()
         startServer()
@@ -82,10 +101,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
             isOnlineLocally: true
         )
         self.localDevice = updatedDevice
-
-        self.lock.lock()
-        self.trustedDevicesStore[updatedDevice.id] = updatedDevice
-        self.lock.unlock()
+        self.deviceBox.set(updatedDevice)
     }
 
     public func startServer() {
@@ -94,11 +110,9 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
         srv.delegate = self
         self.server = srv
 
-        srv.trustedDevicesProvider = { [weak self] in
-            guard let self = self else { return [:] }
-            self.lock.lock()
-            defer { self.lock.unlock() }
-            return self.trustedDevicesStore
+        let box = self.deviceBox
+        srv.trustedDevicesProvider = {
+            return box.getAll()
         }
 
         do {
@@ -206,9 +220,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
     }
 
     public func addTrustedDevice(_ device: Device) {
-        lock.lock()
-        trustedDevicesStore[device.id] = device
-        lock.unlock()
+        deviceBox.set(device)
 
         if let idx = trustedDevices.firstIndex(where: { $0.id == device.id }) {
             trustedDevices[idx] = device
@@ -222,9 +234,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
     }
 
     public func revokeDevice(id: String) {
-        lock.lock()
-        trustedDevicesStore.removeValue(forKey: id)
-        lock.unlock()
+        deviceBox.remove(id)
 
         trustedDevices.removeAll { $0.id == id }
         if selectedPeerId == id {
