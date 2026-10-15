@@ -36,17 +36,15 @@ final class LocalTransferIntegrationTests: XCTestCase {
         try server.start()
         defer { server.stop() }
 
-        // Allow socket listener to bind
-        try await Task.sleep(nanoseconds: 100_000_000)
-
-        let client = LocalTransferClient(
-            securityManager: senderSecurity,
-            localDeviceId: senderDeviceId
-        )
-        let endpoint = "http://127.0.0.1:\(testPort)"
-
-        // 1. Health check
-        let isHealthy = await client.checkHealth(endpoint: endpoint)
+        // 1. Health check with retry loop to allow socket listener to bind
+        var isHealthy = false
+        for _ in 0..<25 {
+            if await client.checkHealth(endpoint: endpoint) {
+                isHealthy = true
+                break
+            }
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
         XCTAssertTrue(isHealthy, "Server health check must return 200 OK")
 
         // 2. Transfer file
@@ -64,11 +62,19 @@ final class LocalTransferIntegrationTests: XCTestCase {
             itemType: .image
         )
 
-        // Wait briefly for file write and verify
-        try await Task.sleep(nanoseconds: 300_000_000)
-
+        // Wait with retry loop for file write and verify
         let destinationFile = serverDownloadsDir.appendingPathComponent("sample_image.png")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: destinationFile.path), "Received file must exist in download folder")
+        var fileVerified = false
+        for _ in 0..<25 {
+            if FileManager.default.fileExists(atPath: destinationFile.path) {
+                if let currentBytes = try? Data(contentsOf: destinationFile), currentBytes.count == filePayload.count {
+                    fileVerified = true
+                    break
+                }
+            }
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
+        XCTAssertTrue(fileVerified, "Received file must exist and match expected byte count")
         let receivedBytes = try Data(contentsOf: destinationFile)
         XCTAssertEqual(receivedBytes, filePayload, "Received file bytes must match sent file bytes exactly")
 
