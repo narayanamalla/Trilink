@@ -39,6 +39,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
     private let security = SecurityManager()
     private let client: LocalTransferClient
     private let lock = NSLock()
+    private var trustedDevicesStore: [String: Device] = [:]
 
     public init() {
         let userDownloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
@@ -49,7 +50,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
         let devId = UUID().uuidString
         self.client = LocalTransferClient(securityManager: security, localDeviceId: devId)
 
-        self.localDevice = Device(
+        let initialDevice = Device(
             id: devId,
             deviceName: Host.current().localizedName ?? "MacBook Air",
             platform: "macos",
@@ -58,6 +59,11 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
             localEndpoint: "http://127.0.0.1:42425",
             isOnlineLocally: true
         )
+        self.localDevice = initialDevice
+
+        self.lock.lock()
+        self.trustedDevicesStore[devId] = initialDevice
+        self.lock.unlock()
 
         refreshIP()
         startServer()
@@ -66,7 +72,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
     public func refreshIP() {
         let ip = getLocalIPAddress()
         self.localIP = ip
-        self.localDevice = Device(
+        let updatedDevice = Device(
             id: localDevice.id,
             deviceName: localDevice.deviceName,
             platform: "macos",
@@ -75,6 +81,11 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
             localEndpoint: "http://\(ip):\(port)",
             isOnlineLocally: true
         )
+        self.localDevice = updatedDevice
+
+        self.lock.lock()
+        self.trustedDevicesStore[updatedDevice.id] = updatedDevice
+        self.lock.unlock()
     }
 
     public func startServer() {
@@ -87,11 +98,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
             guard let self = self else { return [:] }
             self.lock.lock()
             defer { self.lock.unlock() }
-            var dict: [String: Device] = [self.localDevice.id: self.localDevice]
-            for d in self.trustedDevices {
-                dict[d.id] = d
-            }
-            return dict
+            return self.trustedDevicesStore
         }
 
         do {
@@ -163,38 +170,51 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
 
         // If endpoint (e.g. 192.168.0.15:42425 or http://192.168.0.15:42425)
         let endpoint = trimmed.starts(with: "http") ? trimmed : "http://\(trimmed)"
+        let pairingPayload = PairingPayload(
+            version: 1,
+            pairingId: UUID().uuidString,
+            deviceId: localDevice.id,
+            deviceName: localDevice.deviceName,
+            platform: "macos",
+            publicKey: localDevice.publicKey,
+            exchangeKey: localDevice.exchangeKey,
+            localEndpoint: "http://\(localIP):\(port)"
+        )
+
         Task {
-            let success = await self.client.pair(
-                endpoint: endpoint,
-                localDeviceName: self.localDevice.deviceName,
-                localEndpoint: "http://\(self.localIP):\(self.port)"
-            )
-            if success {
-                let dev = Device(
-                    id: UUID().uuidString,
-                    deviceName: "Android Device",
-                    platform: "android",
-                    publicKey: "",
-                    exchangeKey: "",
-                    localEndpoint: endpoint,
-                    isOnlineLocally: true
-                )
-                self.addTrustedDevice(dev)
-                self.statusBanner = "✓ Handshake accepted by \(endpoint)!"
-            } else {
-                self.statusBanner = "Pairing request timed out or was rejected by peer."
+            do {
+                let success = try await self.client.sendPairingRequest(endpoint: endpoint, payload: pairingPayload)
+                if success {
+                    let dev = Device(
+                        id: UUID().uuidString,
+                        deviceName: "Peer Device",
+                        platform: "android",
+                        publicKey: "",
+                        exchangeKey: "",
+                        localEndpoint: endpoint,
+                        isOnlineLocally: true
+                    )
+                    self.addTrustedDevice(dev)
+                    self.statusBanner = "✓ Handshake accepted by \(endpoint)!"
+                } else {
+                    self.statusBanner = "Pairing request was rejected by peer."
+                }
+            } catch {
+                self.statusBanner = "Pairing failed: \(error.localizedDescription)"
             }
         }
     }
 
     public func addTrustedDevice(_ device: Device) {
         lock.lock()
+        trustedDevicesStore[device.id] = device
+        lock.unlock()
+
         if let idx = trustedDevices.firstIndex(where: { $0.id == device.id }) {
             trustedDevices[idx] = device
         } else {
             trustedDevices.append(device)
         }
-        lock.unlock()
 
         if selectedPeerId == nil {
             selectedPeerId = device.id
@@ -203,8 +223,10 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
 
     public func revokeDevice(id: String) {
         lock.lock()
-        trustedDevices.removeAll { $0.id == id }
+        trustedDevicesStore.removeValue(forKey: id)
         lock.unlock()
+
+        trustedDevices.removeAll { $0.id == id }
         if selectedPeerId == id {
             selectedPeerId = trustedDevices.first?.id
         }
@@ -221,7 +243,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
         let displayName = fileURL.lastPathComponent
         let size = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
 
-        var transfer = Transfer(
+        let transfer = Transfer(
             id: transferId,
             senderDeviceId: localDevice.id,
             recipientDeviceId: targetDevice.id,
@@ -244,12 +266,13 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
                     fileURL: fileURL,
                     displayName: displayName,
                     itemType: .file
-                ) { [weak self] sent, total in
-                    Task { @MainActor in
-                        if let idx = self?.transfers.firstIndex(where: { $0.id == transferId }) {
-                            self?.transfers[idx].bytesTransferred = sent
+                ) { sent, total in
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        if let idx = self.transfers.firstIndex(where: { $0.id == transferId }) {
+                            self.transfers[idx].bytesTransferred = sent
                             if sent >= total {
-                                self?.transfers[idx].status = .delivered
+                                self.transfers[idx].status = .delivered
                             }
                         }
                     }
@@ -396,7 +419,7 @@ public final class AppStateManager: ObservableObject, LocalTransferServerDelegat
         guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return address }
         defer { freeifaddrs(ifaddr) }
 
-        for ptr in sequence(first: firstAddr, by: { $0.pointee.ifa_next }) {
+        for ptr in sequence(first: firstAddr, next: { $0.pointee.ifa_next }) {
             let flags = Int32(ptr.pointee.ifa_flags)
             let addr = ptr.pointee.ifa_addr.pointee
             if (flags & (IFF_UP | IFF_RUNNING | IFF_LOOPBACK)) == (IFF_UP | IFF_RUNNING) {
