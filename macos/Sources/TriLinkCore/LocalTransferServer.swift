@@ -272,17 +272,20 @@ public final class LocalTransferServer: @unchecked Sendable {
 
                 // Append initial body chunk
                 try? active.handle.write(contentsOf: initialBody)
-                var currentBytes = active.receivedBytes + Int64(initialBody.count)
+                let currentBytes = active.receivedBytes + Int64(initialBody.count)
                 self.lock.lock()
                 self.activeTransfers[transferId] = (active.request, active.tempFile, active.handle, currentBytes)
                 self.lock.unlock()
 
-                // Continue reading stream until finished
-                readStreamBody(
-                    connection: connection,
-                    transferId: transferId,
-                    expectedBytes: active.request.sizeBytes
-                )
+                if currentBytes >= active.request.sizeBytes {
+                    self.finalizeTransfer(connection: connection, transferId: transferId)
+                } else {
+                    self.readStreamBody(
+                        connection: connection,
+                        transferId: transferId,
+                        expectedBytes: active.request.sizeBytes
+                    )
+                }
                 return
             }
         }
@@ -315,44 +318,56 @@ public final class LocalTransferServer: @unchecked Sendable {
             }
 
             if isComplete || (self.activeTransfers[transferId]?.receivedBytes ?? 0) >= expectedBytes {
-                try? active.handle.close()
-
-                // Verify SHA-256 integrity
-                if let fileData = try? Data(contentsOf: active.tempFile) {
-                    let computedSha = SecurityManager.sha256Hex(data: fileData)
-                    if computedSha.lowercased() == active.request.sha256.lowercased() {
-                        let finalDestination = PathSanitizer.resolveDestinationFile(
-                            parentDir: self.downloadsDirectory,
-                            filename: active.request.displayName
-                        )
-                        try? FileManager.default.moveItem(at: active.tempFile, to: finalDestination)
-
-                        self.lock.lock()
-                        self.activeTransfers.removeValue(forKey: transferId)
-                        self.lock.unlock()
-
-                        Task {
-                            await self.delegate?.serverDidCompleteTransfer(
-                                transferId: transferId,
-                                fileURL: finalDestination,
-                                itemType: active.request.itemType,
-                                displayName: active.request.displayName,
-                                textContent: active.request.textContent
-                            )
-                        }
-
-                        let resp = "{\"status\":\"delivered\",\"transfer_id\":\"\(transferId)\",\"verified_sha256\":\"\(computedSha)\"}"
-                        self.sendResponse(connection: connection, statusCode: 200, contentType: "application/json", body: resp)
-                        return
-                    } else {
-                        try? FileManager.default.removeItem(at: active.tempFile)
-                        self.sendResponse(connection: connection, statusCode: 422, body: "INTEGRITY_MISMATCH")
-                        return
-                    }
-                }
+                self.finalizeTransfer(connection: connection, transferId: transferId)
             } else {
                 self.readStreamBody(connection: connection, transferId: transferId, expectedBytes: expectedBytes)
             }
+        }
+    }
+
+    private func finalizeTransfer(connection: NWConnection, transferId: String) {
+        self.lock.lock()
+        guard let active = self.activeTransfers[transferId] else {
+            self.lock.unlock()
+            connection.cancel()
+            return
+        }
+        self.lock.unlock()
+
+        try? active.handle.close()
+
+        // Verify SHA-256 integrity
+        if let fileData = try? Data(contentsOf: active.tempFile) {
+            let computedSha = SecurityManager.sha256Hex(data: fileData)
+            if computedSha.lowercased() == active.request.sha256.lowercased() {
+                let finalDestination = PathSanitizer.resolveDestinationFile(
+                    parentDir: self.downloadsDirectory,
+                    filename: active.request.displayName
+                )
+                try? FileManager.default.moveItem(at: active.tempFile, to: finalDestination)
+
+                self.lock.lock()
+                self.activeTransfers.removeValue(forKey: transferId)
+                self.lock.unlock()
+
+                Task {
+                    await self.delegate?.serverDidCompleteTransfer(
+                        transferId: transferId,
+                        fileURL: finalDestination,
+                        itemType: active.request.itemType,
+                        displayName: active.request.displayName,
+                        textContent: active.request.textContent
+                    )
+                }
+
+                let resp = "{\"status\":\"delivered\",\"transfer_id\":\"\(transferId)\",\"verified_sha256\":\"\(computedSha)\"}"
+                self.sendResponse(connection: connection, statusCode: 200, contentType: "application/json", body: resp)
+            } else {
+                try? FileManager.default.removeItem(at: active.tempFile)
+                self.sendResponse(connection: connection, statusCode: 422, body: "INTEGRITY_MISMATCH")
+            }
+        } else {
+            self.sendResponse(connection: connection, statusCode: 500, body: "Failed to read transferred file")
         }
     }
 
