@@ -87,7 +87,7 @@ struct ChatView: View {
                         }
                         .padding()
                     }
-                    .onChange(of: state.chatMessages.count) {
+                    .onReceive(state.$transfers) { _ in
                         if let lastId = state.chatMessages.last?.id {
                             withAnimation(.easeOut(duration: 0.2)) {
                                 proxy.scrollTo(lastId, anchor: .bottom)

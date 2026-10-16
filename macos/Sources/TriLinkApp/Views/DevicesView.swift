@@ -193,6 +193,7 @@ struct DevicesView: View {
                 }
             }
             .padding(24)
+        }
     }
 
     private func endpointDisplayText(_ device: Device) -> String {
