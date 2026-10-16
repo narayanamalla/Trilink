@@ -497,12 +497,13 @@ public final class LocalTransferServer: @unchecked Sendable {
                 self.activeTransfers.removeValue(forKey: transferId)
                 self.lock.unlock()
 
+                let completedFilename = finalFilename
                 Task {
                     await self.delegate?.serverDidCompleteTransfer(
                         transferId: transferId,
                         fileURL: finalDestination,
                         itemType: active.request.itemType,
-                        displayName: finalFilename,
+                        displayName: completedFilename,
                         textContent: active.request.textContent
                     )
                 }
